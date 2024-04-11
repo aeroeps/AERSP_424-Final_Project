@@ -18,7 +18,6 @@ public:
 class Obstacle : public Drawable {
 private:
     vector<int> coordinates;
-    float squareSize; // Declare squareSize as a member variable
 
 public:
     Obstacle(const vector<int>& coords) : coordinates(coords) {}
@@ -166,23 +165,23 @@ private:
     vector<int> obstaclesBottom;
     deque<float> food;
     vector<vector<bool>> bitmap;
-    bool* keyStates;
     int points = 0;
     vector<Monster> monsters;
     vector<Drawable*> drawables;
     vector<float> foodPositions;
 
 public:
-Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncrement(0), yIncrement(0), rotation(0), points(0) {
-    keyStates = new bool[256];
-}
-
-~Game() {
-    delete[] keyStates;
-    for (auto drawable : drawables) {
-        delete drawable;
+    bool* keyStates;
+    Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncrement(0), yIncrement(0), rotation(0), points(0) {
+        keyStates = new bool[256];
     }
-}
+
+    ~Game() {
+        // delete[] keyStates;
+        for (auto drawable : drawables) {
+            delete drawable;
+        }
+    }
 
     void init() {
         // Clear screen
@@ -190,13 +189,24 @@ Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncre
         glShadeModel(GL_FLAT);
 
         // Reset all keys
-        for (int i = 0; i < 256; i++) {
-            keyStates[i] = false;
-        }
+        for (int i = 0; i < 256; i++) { keyStates[i] = false; }
 
         // Initialize bitmap with obstacles
         bitmap.push_back({ true, true, true, true, true, true, true, true, true, true, true, true, true, true, true });
-        // Add more bitmap initialization here
+        bitmap.push_back({ true, false, false, false, false, false, false, false, false, false, false, false, false, false, true });
+        bitmap.push_back({ true, false, true, true, true, true, false, true, true, false, true, true, true, false, true });
+        bitmap.push_back({ true, false, false, false, false, true, false, true, false, false, false, false, true, false, true});
+        bitmap.push_back({ true, false, true, true, false, false, false, false, false, true, true, false, false, false, true});
+        bitmap.push_back({ true, false, false, true, true, false, true, true, true, true, false, false, true, false, true});
+        bitmap.push_back({ true, true, false, false, false, false, true, false, true, true, false, true, true, false, true});
+        bitmap.push_back({ true, true, true, true, true, false, false, false, true, false, false, false, false, false, true});
+        bitmap.push_back({ true, true, false, false, false, false, true, false, true, true, false, true, true, false, true });
+        bitmap.push_back({ true, false, false, true, true, false, true, true, true, true, false, false, true, false, true });
+        bitmap.push_back({ true, false, true, true, false, false, false, false, false, true, true, false, false, false, true });
+        bitmap.push_back({ true, false, false, false, false, true, false, true, false, false, false, false, true, false, true });
+        bitmap.push_back({ true, false, true, true, true, true, false, true, true, false, true, true, true, false, true });
+        bitmap.push_back({ true, false, false, false, false, false, false, false, false, false, false, false, false, false, true });
+        bitmap.push_back({ true, true, true, true, true, true, true, true, true, true, true, true, true, true, true });        
 
         // Initialize monsters
         monsters.push_back(Monster(10.5, 8.5, 0.0, 0.0, 0.1)); // blue colored monster
@@ -221,7 +231,7 @@ Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncre
                (y >= pacmanY - radius && y <= pacmanY + radius);
     }
 
-    //Method to draw all the food left and delete the ate one
+    //Method to draw all the food left and delete the eaten one
     void drawFood(float pacmanX, float pacmanY) {
         vector<float> temp;
         for (size_t i = 0; i < foodPositions.size(); i += 2) {
@@ -349,16 +359,19 @@ Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncre
     void gameOver() {
         int pacmanX = (int)(1.5 + xIncrement);
         int pacmanY = (int)(1.5 + yIncrement);
+    
         for (const auto& monster : monsters) {
-            int monsterX = (int)monster.getPositionX();
-            int monsterY = (int)monster.getPositionY();
+            int monsterX = static_cast<int>(monster.getPositionX());
+            int monsterY = static_cast<int>(monster.getPositionY());
+            
             if (pacmanX == monsterX && pacmanY == monsterY) {
                 over = true;
-                return;
+                return; // If Pacman collides with any monster, game over
             }
         }
+
         if (points == 106) {
-            over = true;
+            over = true; // If all food is eaten, game over
         }
     }
 
@@ -442,7 +455,7 @@ Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncre
         glRasterPos2f(50, 400);
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
-        message = "To start or restart the game, press the space key.";
+        message = "To start the game, press the space key twice.";
         glRasterPos2f(170, 450);
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
@@ -489,22 +502,10 @@ Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncre
 Game game(*(new Pacman(0,0,0)));
 
 // Define static functions
-void keyPressedCallback(unsigned char key, int x, int y) {
-    game.keyPressed(key, x, y);
-}
-
-void keyUpCallback(unsigned char key, int x, int y) {
-    game.keyUp(key, x, y);
-}
-
-void displayCallback() {
-    game.display();
-}
-
-void reshapeCallback(int w, int h) {
-    game.reshape(w, h);
-}
-
+void displayCallback() { game.display(); }
+void reshapeCallback(int w, int h) { game.reshape(w, h); }
+void keyPressedCallback(unsigned char key, int x, int y){ game.keyStates[key] = true; }
+void keyUpCallback(unsigned char key, int x, int y){ game.keyStates[key] = false; }
 
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
@@ -513,18 +514,19 @@ int main(int argc, char** argv) {
     glutInitWindowPosition(100, 100);
     glutCreateWindow("Pacman");
     
+    // Set GLUT callbacks
+    glutKeyboardFunc(keyPressedCallback);
+    glutKeyboardUpFunc(keyUpCallback);
+    glutDisplayFunc(displayCallback);
+    glutReshapeFunc(reshapeCallback);
+    glutIdleFunc(displayCallback);
+
     // Pacman object
     Pacman pacman(400, 300, 0);
 
     // Game object
     Game game(pacman);
     game.init();
-
-    // Set GLUT callbacks
-    glutKeyboardFunc(keyPressedCallback);
-    glutKeyboardUpFunc(keyUpCallback);
-    glutDisplayFunc(displayCallback);
-    glutReshapeFunc(reshapeCallback);
 
     glutMainLoop();
     return 0;

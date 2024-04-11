@@ -1,7 +1,3 @@
-// Author: Patricia Terol
-// Course: CSE 2050
-// Project: assign10
-
 #define GL_SILENCE_DEPRECATION // Used new GL library for my Mac
 #include <stdlib.h>
 #include <vector>
@@ -35,7 +31,7 @@ static vector<vector<bool>> bitmap; // 2d image of which squares are blocked and
 bool* keyStates = new bool[256]; // record of all keys pressed 
 int points = 0; // total points collected
 
-//Initializes the game with the appropiate information 
+//Initializes the game with the appropriate information 
 void init(void){
 	//clear screen
 	glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -93,7 +89,7 @@ bool foodEaten(int x, int y, float pacmanX, float pacmanY){
 	return false;
 }
 
-//Method to draw all the food left and delete the ate one
+//Method to draw all the food left and delete the eaten ones
 void drawFood(float pacmanX, float pacmanY){
 	deque<float> temp;
 	//check if the food has not been eaten
@@ -110,14 +106,14 @@ void drawFood(float pacmanX, float pacmanY){
 	glPointSize(5.0);
 	glBegin(GL_POINTS);
 	glColor3f(1.0, 1.0, 1.0);
-	//draw all the food avilable
+	//draw all the food available
 	for (int j = 0; j < food.size(); j = j + 2){
 		glVertex2f(food.at(j)*squareSize, food.at(j + 1)*squareSize);
 	}
 	glEnd();
 }
 
-//Method to draw the pacman character through consicutive circle algorithm
+//Method to draw the pacman character through consecutive circle algorithm
 void drawPacman(float positionX, float positionY, float rotation){
 	int x, y;
 	glBegin(GL_LINES);
@@ -172,7 +168,7 @@ void updateMonster(float* monster, int id){
 		int x2Quadrant = (int)((monster[0] + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
 		int y1Quadrant = (int)((monster[1] - (2/squareSize)) - (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
 		int y2Quadrant = (int)((monster[1] + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-		//move him acording to its direction until he hits an obstacle
+		//move him according to its direction until he hits an obstacle
 		switch ((int)monster[2]){
 		case 1:
 			if (!bitmap.at(x1Quadrant).at((int)monster[1])){ 
@@ -232,7 +228,7 @@ void keyUp(unsigned char key, int x, int y){
 	keyStates[key] = false;
 }
 
-//Method to reset all the variable necessaries to start the game again
+//Method to reset all the variables necessary to start the game again
 void resetGame(){
 	over = false;
 	xIncrement = 0;
@@ -349,7 +345,8 @@ void resultsDisplay(){
 		glRasterPos2f(170, 550);
 		while (*message)
 			glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
-	}else {
+	} 
+	else {
 		//Lost
 		const char* message = "*************************";
 		glRasterPos2f(210, 250);
@@ -442,8 +439,8 @@ void display(){
 	glutSwapBuffers();
 }
 
-//Methdo to reshape the game is the screen size changes
-void reshape(int w, int h){
+//Methdod to reshape the game is the screen size changes
+void reshape(int w, int h) {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glViewport(0, 0, (GLsizei)w, (GLsizei)h);
@@ -453,7 +450,7 @@ void reshape(int w, int h){
 }
 
 
-//Main functions that controls the running of the game
+// Main functions that control the running of the game
 int main(int argc, char** argv){
 	//initialize and create the screen
 	glutInit(&argc, argv);

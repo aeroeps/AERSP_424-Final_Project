@@ -10,7 +10,9 @@
                 "-g",
                 "${file}",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "${fileDirname}/${fileBasenameNoExtension}",
+                "-framework", "OpenGL",
+                "-framework", "GLUT"
             ],
             "options": {
                 "cwd": "${fileDirname}"

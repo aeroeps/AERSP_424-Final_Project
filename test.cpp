@@ -451,26 +451,25 @@ Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncre
 
     // Method to display the screen and its elements
     void display() {
-        if (game.points == 1) {
-            game.over = false;
-        }
-        game.keyOperations();
+        if (this->points ==1) { this->over = false; }
+
+        this->keyOperations();
         glClear(GL_COLOR_BUFFER_BIT);
-        game.gameOver();
-        if (game.replay) {
-            if (!game.over) {
-                game.drawLaberynth();
-                game.drawFood((1.5 + game.xIncrement) * game.squareSize, (1.5 + game.yIncrement) * game.squareSize);
-                game.pacman.draw();
-                for (auto& monster : game.getMonsters()) {
+        this->gameOver();
+        if (this->replay) {
+            if (!this->over) {
+                this->drawLaberynth();
+                this->drawFood((1.5 + this->xIncrement) * this->squareSize, (1.5 + this->yIncrement) * this->squareSize);
+                this->pacman.draw();
+                for (auto& monster : this->getMonsters()) {
                     monster.updatePosition();
                     monster.draw();
                 }
             } else {
-                game.resultsDisplay();
+                this->resultsDisplay();
             }
         } else {
-            game.welcomeScreen();
+            this->welcomeScreen();
         }
         glutSwapBuffers();
     }
@@ -486,7 +485,25 @@ Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncre
     }
 };
 
+// Declare the game object globally
+Game game(*(new Pacman(0,0,0)));
 
+// Define static functions
+void keyPressedCallback(unsigned char key, int x, int y) {
+    game.keyPressed(key, x, y);
+}
+
+void keyUpCallback(unsigned char key, int x, int y) {
+    game.keyUp(key, x, y);
+}
+
+void displayCallback() {
+    game.display();
+}
+
+void reshapeCallback(int w, int h) {
+    game.reshape(w, h);
+}
 
 
 int main(int argc, char** argv) {
@@ -495,13 +512,7 @@ int main(int argc, char** argv) {
     glutInitWindowSize(800, 600);
     glutInitWindowPosition(100, 100);
     glutCreateWindow("Pacman");
-    glutKeyboardFunc([&](unsigned char key, int x, int y) {
-        game.keyPressed(key, x, y);
-    });
-    glutKeyboardUpFunc([&](unsigned char key, int x, int y) {
-        game.keyPressed(key, x, y);
-    });
-
+    
     // Pacman object
     Pacman pacman(400, 300, 0);
 
@@ -509,8 +520,11 @@ int main(int argc, char** argv) {
     Game game(pacman);
     game.init();
 
-    glutDisplayFunc(display);
-    glutReshapeFunc(reshape);
+    // Set GLUT callbacks
+    glutKeyboardFunc(keyPressedCallback);
+    glutKeyboardUpFunc(keyUpCallback);
+    glutDisplayFunc(displayCallback);
+    glutReshapeFunc(reshapeCallback);
 
     glutMainLoop();
     return 0;

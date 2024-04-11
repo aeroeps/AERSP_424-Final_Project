@@ -14,7 +14,7 @@ are no powerups, Pacman has only one life, and the map of the maze is different 
 the original game. 
 
 All files necessary to run the game are included. To play, the user needs only to download the 
-provided files to a known location in their drive, open the .sln in Microsoft Visual 
+provided .zip files to a known location in their drive, open the .sln in Microsoft Visual 
 Studio, and run the program. When prompted to begin the game, the user should press 
 play and use the keyboard keys "w', "a", "s", and "d" to move the yellow Pacman 
 character up, left, down, and right, respectively. If the user successfully moves their 

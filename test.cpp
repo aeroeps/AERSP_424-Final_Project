@@ -6,11 +6,10 @@
 #include <vector>
 #include <deque>
 #include <cmath>
-#include <set>
+#include <thread>
+#include <atomic>
 
 using namespace std;
-
-// vector<vector<bool>> bitmap;
 
 class Drawable {
 public:
@@ -25,7 +24,7 @@ private:
 public:
     Obstacle() : coordinates({}) {} // Default constructor
     Obstacle(const vector<int>& coords) : coordinates(coords) {}
-    float squareSize;
+    static constexpr float squareSize = 50.0;
     void draw() const override {
         glColor3f(1.0, 1.0, 1.0);
         for (size_t i = 0; i < coordinates.size(); i +=4) {
@@ -127,21 +126,19 @@ public:
 
 class Pacman : public Obstacle {
 private:
-    float positionX;
-    float positionY;
-    float rotation;
-
+    atomic<float> positionX;
+    atomic<float> positionY;
+    atomic<int> rotation;
+    // int x, y; // Pacman's position
 public:
-    Pacman(float posX, float posY, float rot) : positionX(posX), positionY(posY), rotation(rot) {}
+    Pacman() : positionX(0.0), positionY(0.0), rotation(0) {}
 
-    float getPositionX() const { return positionX; }
 
-    float getPositionY() const { return positionY; }
-
-    void draw() const {
-        int x, y;
+    void draw(float posX, float posY, float rot) {
+        // Drawing logic for Pacman
         glBegin(GL_LINES);
         glColor3f(1.0, 1.0, 0.0);
+        int x, y;
         for (int k = 0; k < 32; k++) {
             x = (float)k / 2.0 * cos((30 + 90 * rotation) * M_PI / 180.0) + (positionX*squareSize);
             y = (float)k / 2.0 * sin((30 + 90 * rotation) * M_PI / 180.0) + (positionY*squareSize);
@@ -153,6 +150,49 @@ public:
             }
         }
         glEnd();
+    }
+
+    void rotate(int angle) { rotation = angle; }
+
+    void move(float xIncrement, float yIncrement) {
+        float oldX = positionX.load();
+        float oldY = positionY.load();
+        positionX.store(oldX + xIncrement);
+        positionY.store(oldY + yIncrement);
+    }
+
+    void setInitialPosition(float x, float y) { 
+        positionX = x;
+        positionY = y;
+    }
+};
+
+atomic<bool> running(true);
+enum class Direction { UP, DOWN, LEFT, RIGHT };
+void getInput(std::atomic<bool>& running, Direction& dir) {
+    while (running) {
+        char input;
+        std::cin >> input;
+
+        switch (input) {
+            case 'w':
+                dir = Direction::UP;
+                break;
+            case 's':
+                dir = Direction::DOWN;
+                break;
+            case 'a':
+                dir = Direction::LEFT;
+                break;
+            case 'd':
+                dir = Direction::RIGHT;
+                break;
+            case ' ': // Quit the game
+                running = false;
+                break;
+            default:
+                break;
+        }
     }
 };
 
@@ -174,11 +214,10 @@ private:
     int points = 0;
     // vector<Monster> monsters;
     vector<Drawable*> drawables;
-    vector<float> foodPositions;
 
 public:
+    vector<float> foodPositions;
     bool* keyStates;
-    std::set<std::pair<int, int>> foodPositions;
 
     Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncrement(0), yIncrement(0), rotation(0), points(0) {
     
@@ -199,6 +238,8 @@ public:
                     { 1,0,0,1,0,1,0,0,0,0,1,0,0,0,1 },
                     { 1,0,1,1,1,1,1,1,1,1,1,1,1,0,1 },
                     { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 } };
+
+        pacman.setInitialPosition(1.5,1.5); // IMPORTANT. SET'S INITIAL POSITION
     }
 
     ~Game() {
@@ -210,28 +251,11 @@ public:
     
     void init() {
         // Clear screen
-        glClearColor(0.0, 0.0, 0.0, 0.0);
-        glShadeModel(GL_FLAT);
+        //glClearColor(0.0, 0.0, 0.0, 0.0);
+        //glShadeModel(GL_FLAT);
 
         // Reset all keys
-        for (int i = 0; i < 256; i++) { keyStates[i] = false; }
-
-        // Initialize bitmap with obstacles
-        // int bitmap[MAP_SIZE][MAP_SIZE] = {  { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 },
-        //                                     { 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1 },
-        //                                     { 1,0,0,1,0,1,0,1,1,1,1,1,0,0,1 },
-        //                                     { 1,0,1,1,0,1,0,1,1,1,1,1,1,0,1 },
-        //                                     { 1,0,1,0,0,0,0,1,0,0,0,0,1,0,1 },
-        //                                     { 1,0,1,1,0,1,1,1,1,0,1,0,1,0,1 },
-        //                                     { 1,0,0,0,0,0,0,1,0,0,1,0,0,0,1 },
-        //                                     { 1,0,1,1,1,1,0,1,1,1,1,1,1,0,1 },
-        //                                     { 1,0,1,0,0,1,0,0,0,0,0,0,0,0,1 },
-        //                                     { 1,0,1,1,1,1,0,1,1,1,1,1,1,0,1 },
-        //                                     { 1,0,0,0,0,1,0,1,0,0,0,0,1,0,1 },
-        //                                     { 1,1,1,1,0,1,0,1,1,1,1,0,1,0,1 },
-        //                                     { 1,0,0,1,0,1,0,0,0,0,1,0,0,0,1 },
-        //                                     { 1,0,1,1,1,1,1,1,1,1,1,1,1,0,1 },
-        //                                     { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 } };      
+        for (int i = 0; i < 256; i++) { keyStates[i] = false; }    
         
         // Initialize monsters
         // monsters.push_back(Monster(10.5, 8.5, 0.0, 0.0, 0.1)); // blue colored monster
@@ -243,10 +267,33 @@ public:
         drawables.push_back(new Obstacle(obstaclesBottom));
     }
 
-    void drawLaberynth() const {
-        for (auto drawable : drawables) {
-            drawable->draw();
+    void drawLaberynth() {
+        static vector<int> border = { 0, 0, 15, 1, 15, 15, 14, 1, 0, 14, 15, 15, 1, 14, 0, 0 }; //coordinates of the border walls
+        glColor3f(1.0, 1.0, 1.0);
+        //Border
+        for (int i = 0; i < border.size(); i = i + 4){
+            glRectf(border.at(i) * squareSize, border.at(i + 1)*squareSize, border.at(i + 2)*squareSize, border.at(i + 3)*squareSize);
         }
+
+        //Obstacles
+        for (int j = 0; j < obstaclesBottom.size(); j = j + 4){
+            glRectf(obstaclesBottom.at(j) * squareSize, obstaclesBottom.at(j + 1)*squareSize, obstaclesBottom.at(j + 2)*squareSize, obstaclesBottom.at(j + 3)*squareSize);
+        }
+        for (int k = 0; k < obstaclesMiddle.size(); k = k + 4){
+            glRectf(obstaclesMiddle.at(k) * squareSize, obstaclesMiddle.at(k + 1)*squareSize, obstaclesMiddle.at(k + 2)*squareSize, obstaclesMiddle.at(k + 3)*squareSize);
+        }
+        for (int p = 0; p < obstaclesTop.size(); p = p + 4){
+            glRectf(obstaclesTop.at(p) * squareSize, obstaclesTop.at(p + 1)*squareSize, obstaclesTop.at(p + 2)*squareSize, obstaclesTop.at(p + 3)*squareSize);
+        }
+
+        // // Spaces between food
+        // for (size_t row = 0; row < bitmap.size(); row++) {
+        //     for (size_t col = 0; col < bitmap[row].size(); col++) {
+        //         if (!bitmap[row][col]) {
+        //             glRectf(col * squareSize, row * squareSize, (col + 1) * squareSize, (row + 1) * squareSize);
+        //         }
+        //     }
+        // }
     }
 
     // Method to check if the food has been eaten
@@ -498,7 +545,7 @@ public:
             if (!this->over) {
                 this->drawLaberynth();
                 this->drawFood((1.5 + this->xIncrement) * this->squareSize, (1.5 + this->yIncrement) * this->squareSize);
-                this->pacman.draw();
+                this->pacman.draw(1.5 + this->xIncrement, 1.5 + this->yIncrement, this->rotation);
                 // for (auto& monster : this->getMonsters()) {
                 //     monster.updatePosition();
                 //     monster.draw();
@@ -524,7 +571,7 @@ public:
 };
 
 // Declare the game object globally
-Game game(*(new Pacman(0,0,0)));
+Game game(*(new Pacman));
 
 // Define static functions
 void displayCallback() { game.display(); }
@@ -547,7 +594,8 @@ int main(int argc, char** argv) {
     glutIdleFunc(displayCallback);
 
     // Pacman object
-    Pacman pacman(400, 300, 0);
+    //Pacman pacman(400, 300, 0);
+    Pacman pacman;
 
     // Game object
     Game game(pacman);

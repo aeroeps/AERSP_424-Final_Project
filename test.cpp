@@ -1,5 +1,8 @@
 #define GL_SILENCE_DEPRECATION
-#define MAP_SIZE 15
+#define LEFT_ARROW 37
+#define UP_ARROW 38
+#define RIGHT_ARROW 39
+#define DOWN_ARROW 40
 #include <OpenGL/gl.h>
 #include <GLUT/glut.h>
 #include <iostream>
@@ -8,6 +11,8 @@
 #include <cmath>
 #include <thread>
 #include <atomic>
+#include <string>
+#include <memory>
 
 using namespace std;
 
@@ -33,35 +38,41 @@ public:
     }
 };
 
-/* class Monster
-class Monster : public Drawable {
+class Monster : public Obstacle {
 private:
-    float positionX;
-    float positionY;
+    atomic<float> positionX;
+    atomic<float> positionY;
     float colorR;
     float colorG;
     float colorB;
-    float direction;
+    atomic<int> direction;
+    std::string name;
 
 public:
-    Monster(float posX, float posY, float r, float g, float b) : positionX(posX), positionY(posY), colorR(r), colorG(g), colorB(b) {}
+    Monster() : positionX(0.0), positionY(0.0), direction (0) {}
+
+    Monster(float x, float y, float r, float g, float b)
+        : positionX(x), positionY(y), colorR(r), colorG(g), colorB(b), direction(0) {}
 
     float getPositionX() const { return positionX; }
-
     float getPositionY() const { return positionY; }
+    float getColorR() const { return colorR; }
+    float getColorG() const { return colorG; }
+    float getColorB() const { return colorB; }
 
-    void draw() const override {
+    void draw(float posX, float posY, float r, float g, float b) const {
         int x, y;
         glBegin(GL_LINES);
-        glColor3f(colorR, colorG, colorB);
+        glColor3f(r, g, b);
+        
         // Draw the head
         for (int k = 0; k < 32; k++) {
-            x = (float)k / 2.0 * cos(360 * M_PI / 180.0) + (positionX);
-            y = (float)k / 2.0 * sin(360 * M_PI / 180.0) + (positionY);
+            x = (float)k / 2.0 * cos(360 * M_PI / 180.0) + (posX);
+            y = (float)k / 2.0 * sin(360 * M_PI / 180.0) + (posY);
             for (int i = 180; i <= 360; i++) {
                 glVertex2f(x, y);
-                x = (float)k / 2.0 * cos(i * M_PI / 180.0) + (positionX);
-                y = (float)k / 2.0 * sin(i * M_PI / 180.0) + (positionY);
+                x = (float)k / 2.0 * cos(i * M_PI / 180.0) + (posX);
+                y = (float)k / 2.0 * sin(i * M_PI / 180.0) + (posY);
                 glVertex2f(x, y);
             }
         }
@@ -80,49 +91,13 @@ public:
         glVertex2f((positionX) - 7, (positionY) - 3);   // Eyes
         glEnd();
     }
-    
-    // Method to update the position of the monster randomly
-    void updatePosition() {
-        int x1Quadrant = (int)((positionX - (2/squareSize)) - (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-        int x2Quadrant = (int)((positionX + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-        int y1Quadrant = (int)((positionY - (2/squareSize)) - (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-        int y2Quadrant = (int)((positionY + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-        
-        switch ((int)direction) {
-            case 1:
-                if (!bitmap.at(x1Quadrant).at((int)positionY)) {
-                    positionX -= 2 / squareSize;
-                } else {
-                    direction = (rand() % 4) + 1;
-                }
-                break;
-            case 2:
-                if (!bitmap.at(x2Quadrant).at((int)positionY)) {
-                    positionX += 2 / squareSize;
-                } else {
-                    direction = (rand() % 4) + 1;
-                }
-                break;
-            case 3:
-                if (!bitmap.at((int)positionX).at(y1Quadrant)) {
-                    positionY -= 2 / squareSize;
-                } else {
-                    direction = (rand() % 4) + 1;
-                }
-                break;
-            case 4:
-                if (!bitmap.at((int)positionX).at(y2Quadrant)) {
-                    positionY += 2 / squareSize;
-                } else {
-                    direction = (rand() % 4) + 1;
-                }
-                break;
-            default:
-                break;
-        }
+
+    void setInitialPosition(float x, float y) { 
+        positionX = x;
+        positionY = y;
     }
 };
-*/
+
 
 class Pacman : public Obstacle {
 private:
@@ -181,24 +156,26 @@ private:
     vector<int> obstaclesMiddle;
     vector<int> obstaclesBottom;
     deque<float> food;
-    vector<vector<bool>> bitmap;
+    vector<vector<bool>> bitmap1;
     int points = 0;
-    // vector<Monster> monsters;
+    vector<Monster>& monsters;
     vector<Drawable*> drawables;
     bool moveUp = false;
     bool moveDown = false;
     bool moveLeft = false;
     bool moveRight = false;
+    float x;
+    float y;
 
 public:
     vector<float> foodPositions;
     bool* keyStates;
 
-    Game(Pacman& p) : pacman(p), replay(false), over(true), squareSize(50.0), xIncrement(0), yIncrement(0), rotation(0), points(0) {
+    Game(Pacman& p, vector<Monster>& m) : pacman(p), monsters(m), replay(false), over(true), squareSize(50.0), xIncrement(0), yIncrement(0), rotation(0), points(0) {
     
         keyStates = new bool[256];
 
-        bitmap = {  { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 },
+        bitmap1 = {  { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 },
                     { 1,0,0,0,0,0,1,1,1,0,0,0,0,0,1 },
                     { 1,0,1,0,1,0,0,1,0,0,1,0,1,0,1 },
                     { 1,0,1,0,1,1,0,1,0,1,1,0,1,0,1 },
@@ -215,6 +192,12 @@ public:
                     { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 } };
 
         pacman.setInitialPosition(1.5,1.5); // IMPORTANT. SET'S INITIAL POSITION
+
+        monsters.push_back(Monster(10.5, 8.5, 1.0, 0.0, 0.0)); // Red
+        monsters.push_back(Monster(13.5, 1.5, 0.0, 1.0, 0.0)); // Green
+        monsters.push_back(Monster(4.5, 6.5, 0.0, 0.0, 1.0));  // Blue
+        monsters.push_back(Monster(2.5, 13.5, 1.0, 1.0, 0.0)); // Yellow    
+    
     }
 
     ~Game() {
@@ -242,9 +225,9 @@ public:
     }
 
     void drawLaberynth() {
-        for (int y = 0; y < bitmap.size(); ++y) {
-            for (int x = 0; x < bitmap[y].size(); ++x) {
-                if (bitmap[y][x] == 1) {
+        for (int y = 0; y < bitmap1.size(); ++y) {
+            for (int x = 0; x < bitmap1[y].size(); ++x) {
+                if (bitmap1[y][x] == 1) {
                     // Calculate the coordinates of the rectangle to fill
                     float left = x * squareSize;
                     float bottom = y * squareSize;
@@ -295,188 +278,133 @@ public:
         glEnd();
     }
 
-    // Method to draw all the monsters
-    // void drawMonsters() const {
-    //     for (const auto& monster : monsters) {
-    //         monster.draw();
-    //     }
-    // }
-
-    // vector<Monster>& getMonsters() { return monsters; }
+    // Method to update the position of the monster randomly
+    virtual void updatePosition(float* monster, int id) {
+        int x1Quadrant = (int)((monster[0] - (2/squareSize)) - (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+		int x2Quadrant = (int)((monster[0] + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+		int y1Quadrant = (int)((monster[1] - (2/squareSize)) - (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+		int y2Quadrant = (int)((monster[1] + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+        
+        switch ((int)monster[2]){
+		case 1:
+			if (!bitmap1.at(x1Quadrant).at((int)monster[1])){ 
+				monster[0] -= 2 / squareSize;
+			}else {
+				int current = monster[2];
+				do{
+					monster[2] =  (rand() % 4) + 1;
+				} while (current == (int) monster[2]);
+			}
+			break;
+		case 2:
+			if (!bitmap1.at(x2Quadrant).at((int)monster[1])){
+				monster[0] += 2 / squareSize;
+			}
+			else {
+				int current = monster[2];
+				do{
+					monster[2] = (rand() % 4) + 1;
+				} while (current == (int)monster[2]);
+			}
+			break;
+		case 3:
+			if (!bitmap1.at((int)monster[0]).at(y1Quadrant)){
+				monster[1] -= 2 / squareSize;
+			}
+			else {
+				int current = monster[2];
+				do{
+					monster[2] = (rand() % 4) + 1;
+				} while (current == (int)monster[2]);
+			}
+			break;
+		case 4:
+			if (!bitmap1.at((int)monster[0]).at(y2Quadrant)){
+				monster[1] += 2 / squareSize;
+			}
+			else {
+				int current = monster[2];
+				do{
+					monster[2] = (rand() % 4) + 1;
+				} while (current == (int)monster[2]);
+			}
+			break;
+		default:
+			break;
+		}
+    }
 
     // Method to set the pressed key
     void keyPressed(unsigned char key, int x, int y) {
-        keyStates[key] = true;
+        // keyStates[key] = true;
         switch(key) {
-        case 'w':
-            this->xIncrement = 0.0f;
-            this->yIncrement = 1.5f;
-            this->rotation = 90.0f;
-            break;
-        case 'a':
-            this->xIncrement = -1.5f;
-            this->yIncrement = 0.0f;
-            this->rotation = 180.0f;
-            break;
-        case 's':
-            this->xIncrement = 0.0f;
-            this->yIncrement = -1.5f;
-            this->rotation = 270.0f;
-            break;
-        case 'd':
-            this->xIncrement = 1.5f;
-            this->yIncrement = 0.0f;
-            this->rotation = 0.0f;
-            break;
-        default:
-            break;
+            case 'w':
+            case UP_ARROW:
+                this->xIncrement = 0.0f;
+                this->yIncrement = 1.5f;
+                this->rotation = 90.0f;
+                break;
+            case 'a':
+            case LEFT_ARROW:
+                this->xIncrement = -1.5f;
+                this->yIncrement = 0.0f;
+                this->rotation = 180.0f;
+                break;
+            case 's':
+            case DOWN_ARROW:
+                this->xIncrement = 0.0f;
+                this->yIncrement = -1.5f;
+                this->rotation = 270.0f;
+                break;
+            case 'd':
+            case RIGHT_ARROW:
+                this->xIncrement = 1.5f;
+                this->yIncrement = 0.0f;
+                this->rotation = 0.0f;
+                break;
+            default:
+                break;
     }
     }
 
     // Method to unset the released key
     void keyUp(unsigned char key, int x, int y) {
-        keyStates[key] = false;
+        // keyStates[key] = false;
         switch (key) {
             case 'w':
+            case UP_ARROW:
                 moveUp = false;
                 break;
             case 's':
+            case DOWN_ARROW:
                 moveDown = false;
                 break;
             case 'a':
+            case LEFT_ARROW:
                 moveLeft = false;
                 break;
             case 'd':
+            case RIGHT_ARROW:
                 moveRight = false;
                 break;
+        }
     }
-    }
 
-    // Method to update the movement of the pacman according to the movement keys pressed
-    void keyOperations() {
-        // Update according to keys pressed
-        if (keyStates['a']) {
-            // Update xIncrement for left movement
-            xIncrement -= 2 / squareSize;
-            // Set rotation angle for left movement
-            pacman.rotate(2); // Assuming 2 is the left rotation angle
-        }
-        if (keyStates['d']) {
-            // Update xIncrement for right movement
-            xIncrement += 2 / squareSize;
-            // Set rotation angle for right movement
-            pacman.rotate(0); // Assuming 0 is the right rotation angle
-        }
-        if (keyStates['w']) {
-            // Update yIncrement for up movement
-            yIncrement -= 2 / squareSize;
-            // Set rotation angle for up movement
-            pacman.rotate(3); // Assuming 3 is the up rotation angle
-        }
-        if (keyStates['s']) {
-            // Update yIncrement for down movement
-            yIncrement += 2 / squareSize;
-            // Set rotation angle for down movement
-            pacman.rotate(1); // Assuming 1 is the down rotation angle
-        }
-        if (keyStates[' ']) {
-            if (!replay && over){
-                resetGame();
-                replay = true;
-            }
-            else if (replay && over){
-                replay = false;
-            }
-        }
-
-    // float nextX = (1.5 + xIncrement) * squareSize;
-    // float nextY = (1.5 + yIncrement) * squareSize;
-
-    // // Check for collision with obstacles
-    // int nextXQuadrant = (int)(nextX / squareSize);
-    // int nextYQuadrant = (int)(nextY / squareSize);
-    // if (!bitmap[nextXQuadrant][nextYQuadrant]) {
-    //     // No obstacle, update Pacman's position
-    //     x += xIncrement;
-    //     y += yIncrement;
-    // }
-
-    // Check for boundaries
-    // if (nextX < 0 || nextX > screenWidth || nextY < 0 || nextY > screenHeight) {
-    //     // Pacman will move out of bounds, don't update the position
-    //     return;
-    // }
-
-    // Update Pacman's position
-    // x += xIncrement;
-    // y += yIncrement;
-}
-
-    
-    // void keyOperations() {
-    //     // Get current position
-    //     float x = (1.5 + xIncrement) * squareSize;
-    //     float y = (1.5 + yIncrement) * squareSize;
-        
-    //     // Update according to keys pressed
-    //     if (keyStates['a']) {
-    //         x -= 2;
-    //         int x1Quadrant = (int)((x - 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-    //         if (!bitmap.at(x1Quadrant).at((int)y/squareSize)){
-    //             xIncrement -= 2 / squareSize;
-    //             rotation = 2;
-    //         }
-    //     }
-    //     if (keyStates['d']) {
-    //         x += 2;
-    //         int x2Quadrant = (int)((x + 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-    //         if (!bitmap.at(x2Quadrant).at((int)y / squareSize)){
-    //             xIncrement += 2 / squareSize;
-    //             rotation = 0;
-    //         }
-    //     }
-    //     if (keyStates['w']) {
-    //         y -= 2;
-    //         int y1Quadrant = (int)((y - 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-    //         if (!bitmap.at((int)x/squareSize).at(y1Quadrant)){
-    //             yIncrement -= 2 / squareSize;
-    //             rotation = 3;
-    //         }
-    //     }
-    //     if (keyStates['s']) {
-    //         y += 2;
-    //         int y2Quadrant = (int)((y + 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-    //         if (!bitmap.at((int)x / squareSize).at(y2Quadrant)){
-    //             yIncrement += 2 / squareSize;
-    //             rotation = 1;
-    //         }
-    //     }
-    //     if (keyStates[' ']) {
-    //         if (!replay && over){
-    //             resetGame();
-    //             replay = true;
-    //         }
-    //         else if (replay && over){
-    //             replay = false;
-    //         }
-    //     }
-    // }
-    
     // Method to reset the game state
     void resetGame() {
         over = false;
         xIncrement = 0;
         yIncrement = 0; 
         rotation = 0;
-        
-        // // Reset monster positions
-        // monsters.clear();
-        // monsters.push_back(Monster(10.5, 8.5, 0.0, 0.0, 1.0)); // Monster 1
-        // monsters.push_back(Monster(13.5, 1.5, 0.0, 0.0, 1.0)); // Monster 2
-        // monsters.push_back(Monster(4.5, 6.5, 0.0, 0.0, 1.0)); // Monster 3
-        // monsters.push_back(Monster(2.5, 13.5, 0.0, 0.0, 1.0)); // Monster 4
-        // points = 0;
-        
+
+        pacman.setInitialPosition(1.5,1.5);
+       
+        // Reset each monster's position
+        monsters[0].setInitialPosition(10.5, 8.5); // Blinky
+        monsters[1].setInitialPosition(13.5, 1.5); // Pinky
+        monsters[2].setInitialPosition(4.5, 6.5);  // Inky
+        monsters[3].setInitialPosition(2.5, 13.5); // Clyde
+
         // Reset key states
         for (int i = 0; i < 256; i++){
             keyStates[i] = false;
@@ -485,13 +413,73 @@ public:
         // Reset food positions
         foodPositions = { 
             1.5, 1.5, 1.5, 2.5, 1.5, 3.5, 1.5, 4.5, 1.5, 5.5, 1.5, 6.5, 1.5, 7.5, 1.5, 8.5, 1.5, 9.5, 1.5, 10.5, 1.5, 11.5, 1.5, 12.5, 1.5, 13.5, 
-            2.5, 1.5, 2.5, 6.5, 2.5, 9.5, 2.5, 13.5, 3.5, 1.5, 3.5, 2.5, 3.5, 3.5, 3.5, 4.5, 3.5, 6.5, 3.5, 8.5, 3.5, 9.5, 3.5, 10.5, 3.5, 11.5, 3.5, 13.5, 
-            4.5, 1.5, 4.5, 4.5, 4.5, 5.5, 4.5, 6.5, 4.5, 7.5, 4.5, 8.5, 4.5, 11.5, 4.5, 12.5, 4.5, 13.5, 5.5, 1.5, 5.5, 2.5, 5.5, 5.5, 5.5, 10.5, 5.5, 11.5, 5.5, 13.5, 
-            6.5, 2.5, 6.5, 3.5, 6.5, 4.5, 6.5, 5.5, 6.5, 7.5, 6.5, 10.5, 6.5, 13.5, 7.5, 5.5, 7.5, 6.5, 7.5, 7.5, 7.5, 9.5, 7.5, 10.5, 7.5, 11.5, 7.5, 12.5, 7.5, 13.5, 
-            8.5, 2.5, 8.5, 3.5, 8.5, 4.5, 8.5, 5.5, 8.5, 7.5, 8.5, 10.5, 8.5, 13.5, 9.5, 1.5, 9.5, 2.5, 9.5, 5.5, 9.5, 10.5, 9.5, 11.5, 9.5, 13.5, 10.5, 1.5, 10.5, 4.5, 10.5, 5.5, 
-            10.5, 6.5, 10.5, 7.5, 10.5, 8.5, 10.5, 11.5, 10.5, 12.5, 10.5, 13.5, 11.5, 1.5, 11.5, 2.5, 11.5, 3.5, 11.5, 4.5, 11.5, 5.5, 11.5, 6.5, 11.5, 8.5, 11.5, 9.5, 11.5, 10.5, 11.5, 11.5, 11.5, 13.5, 
-            12.5, 1.5, 12.5, 6.5, 12.5, 9.5, 12.5, 13.5, 13.5, 1.5, 13.5, 2.5, 13.5, 3.5, 13.5, 4.5, 13.5, 5.5, 13.5, 6.5, 13.5, 7.5, 13.5, 8.5, 13.5, 9.5, 13.5, 10.5, 13.5, 11.5, 13.5, 12.5, 13.5 
+            2.5, 1.5, 2.5, 6.5, 2.5, 9.5, 2.5, 13.5, 
+            3.5, 1.5, 3.5, 2.5, 3.5, 3.5, 3.5, 4.5, 3.5, 6.5, 3.5, 8.5, 3.5, 9.5, 3.5, 10.5, 3.5, 11.5, 3.5, 13.5, 
+            4.5, 1.5, 4.5, 4.5, 4.5, 5.5, 4.5, 6.5, 4.5, 7.5, 4.5, 8.5, 4.5, 11.5, 4.5, 12.5, 4.5, 13.5, 
+            5.5, 1.5, 5.5, 2.5, 5.5, 5.5, 5.5, 10.5, 5.5, 13.5, 
+            6.5, 2.5, 6.5, 3.5, 6.5, 4.5, 6.5, 5.5, 6.5, 7.5, 6.5, 10.5, 6.5, 13.5, 
+            7.5, 5.5, 7.5, 6.5, 7.5, 7.5, 7.5, 9.5, 7.5, 10.5, 7.5, 11.5, 7.5, 12.5, 7.5, 13.5, 
+            8.5, 2.5, 8.5, 3.5, 8.5, 4.5, 8.5, 5.5, 8.5, 7.5, 8.5, 10.5, 8.5, 13.5, 
+            9.5, 1.5, 9.5, 2.5, 9.5, 5.5, 9.5, 10.5, 9.5, 11.5, 9.5, 13.5, 
+            10.5, 1.5, 10.5, 4.5, 10.5, 5.5, 10.5, 6.5, 10.5, 7.5, 10.5, 8.5, 10.5, 11.5, 10.5, 12.5, 10.5, 13.5, 
+            11.5, 1.5, 11.5, 2.5, 11.5, 3.5, 11.5, 4.5, 11.5, 6.5, 11.5, 8.5, 11.5, 9.5, 11.5, 10.5, 11.5, 11.5, 11.5, 13.5, 
+            12.5, 1.5, 12.5, 6.5, 12.5, 9.5, 12.5, 13.5, 
+            13.5, 1.5, 13.5, 2.5, 13.5, 3.5, 13.5, 4.5, 13.5, 5.5, 13.5, 6.5, 13.5, 7.5, 13.5, 8.5, 13.5, 9.5, 13.5, 10.5, 13.5, 11.5, 13.5, 12.5, 13.5, 13.5 
         };
+    }
+    
+    // Method to update the movement of the pacman according to the movement keys pressed
+    void keyOperations() {
+
+        float x = (1.5 + xIncrement) * squareSize;
+        float y = (1.5 + yIncrement) * squareSize;
+
+        // Update according to keys pressed
+        if (keyStates['a'] || keyStates[LEFT_ARROW]) {
+            x -= 2;
+            int x1Quadrant = (int)((x - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[x1Quadrant][(int)y / squareSize]) {
+            //if (!bitmap1.at(x1Quadrant).at((int)y / squareSize)) {
+                xIncrement -= 2 / squareSize;
+                pacman.rotate(2);
+            }
+        }
+        if (keyStates['d'] || keyStates[RIGHT_ARROW]) {
+            x += 2;
+            int x2Quadrant = (int)((x + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[x2Quadrant][(int)y / squareSize]) {
+            //if (!bitmap1.at(x2Quadrant).at((int)y / squareSize)) {
+                xIncrement += 2 / squareSize;
+                pacman.rotate(0);
+            }
+        }
+        if (keyStates['w'] || keyStates[UP_ARROW]) {
+            y -= 2;
+            int y1Quadrant = (int)((y - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[(int)x / squareSize][y1Quadrant]) {
+            //if (!bitmap1.at((int)x / squareSize).at(y1Quadrant)) {
+                yIncrement -= 2 / squareSize;
+                pacman.rotate(3);
+            }
+        }
+        if (keyStates['s'] || keyStates[DOWN_ARROW]) {
+            y += 2;
+            int y2Quadrant = (int)((y + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[(int)x / squareSize][y2Quadrant]) {
+            //if (!bitmap1.at((int)x / squareSize).at(y2Quadrant)) {
+                yIncrement += 2 / squareSize;
+                pacman.rotate(1);
+            }
+        }
+        if (keyStates[' ']) {
+            if (!replay && over) {
+                resetGame();
+                replay = true;
+            }
+            else if (replay && over) {
+                replay = false;
+            }
+        }
     }
 
     // Method to check if the game is over
@@ -590,7 +578,7 @@ public:
         glRasterPos2f(150, 300);
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-        message = "To control Pacman use A to go right, D to go left, W to go up and S to go down.";
+        message = "To control Pacman use WASD or Arrow Keys.";
         glRasterPos2f(50, 400);
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
@@ -613,10 +601,9 @@ public:
                 this->drawLaberynth();
                 this->drawFood((1.5 + this->xIncrement) * this->squareSize, (1.5 + this->yIncrement) * this->squareSize);
                 this->pacman.draw(1.5 + this->xIncrement, 1.5 + this->yIncrement, this->rotation);
-                // for (auto& monster : this->getMonsters()) {
-                //     monster.updatePosition();
-                //     monster.draw();
-                // }
+                for (const auto& monster : monsters) {
+                    monster.draw(monster.getPositionX(), monster.getPositionY(), monster.getColorR(), monster.getColorG(), monster.getColorB());
+}            
             } else {
                 this->resultsDisplay();
             }
@@ -636,15 +623,50 @@ public:
         glLoadIdentity();
     }
 };
-
+    
 // Declare the game object globally
-Game game(*(new Pacman));
+std::unique_ptr<Pacman> pacmanPtr(new Pacman);
+std::vector<Monster> monsters(4);
+Game game(*pacmanPtr, monsters);
 
 // Define static functions
 void displayCallback() { game.display(); }
 void reshapeCallback(int w, int h) { game.reshape(w, h); }
 void keyPressedCallback(unsigned char key, int x, int y){ game.keyStates[key] = true; }
 void keyUpCallback(unsigned char key, int x, int y){ game.keyStates[key] = false; }
+void specialKeyPressedCallback(int key, int x, int y) {
+    switch (key) {
+        case GLUT_KEY_UP:
+            game.keyStates[UP_ARROW] = true;
+            break;
+        case GLUT_KEY_DOWN:
+            game.keyStates[DOWN_ARROW] = true;
+            break;
+        case GLUT_KEY_LEFT:
+            game.keyStates[LEFT_ARROW] = true;
+            break;
+        case GLUT_KEY_RIGHT:
+            game.keyStates[RIGHT_ARROW] = true;
+            break;
+    }
+}
+void specialKeyUpCallback(int key, int x, int y) {
+    switch (key) {
+        case GLUT_KEY_UP:
+            game.keyStates[UP_ARROW] = false;
+            break;
+        case GLUT_KEY_DOWN:
+            game.keyStates[DOWN_ARROW] = false;
+            break;
+        case GLUT_KEY_LEFT:
+            game.keyStates[LEFT_ARROW] = false;
+            break;
+        case GLUT_KEY_RIGHT:
+            game.keyStates[RIGHT_ARROW] = false;
+            break;
+    }
+}
+
 
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
@@ -660,12 +682,9 @@ int main(int argc, char** argv) {
     glutReshapeFunc(reshapeCallback);
     glutIdleFunc(displayCallback);
 
-    // Pacman object
-    //Pacman pacman(400, 300, 0);
-    Pacman pacman;
+    glutSpecialFunc(specialKeyPressedCallback);
+    glutSpecialUpFunc(specialKeyUpCallback);
 
-    // Game object
-    Game game(pacman);
     game.init();
 
     glutMainLoop();

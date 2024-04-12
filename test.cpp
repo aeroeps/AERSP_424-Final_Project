@@ -140,12 +140,12 @@ public:
         glColor3f(1.0, 1.0, 0.0);
         int x, y;
         for (int k = 0; k < 32; k++) {
-            x = (float)k / 2.0 * cos((30 + 90 * rotation) * M_PI / 180.0) + (positionX*squareSize);
-            y = (float)k / 2.0 * sin((30 + 90 * rotation) * M_PI / 180.0) + (positionY*squareSize);
+            x = (float)k / 2.0 * cos((30 + 90 * rotation) * M_PI / 180.0) + (posX*squareSize);
+            y = (float)k / 2.0 * sin((30 + 90 * rotation) * M_PI / 180.0) + (posY*squareSize);
             for (int i = 30; i < 330; i++) {
                 glVertex2f(x, y);
-                x = (float)k / 2.0 * cos((i + 90 * rotation) * M_PI / 180.0) + (positionX*squareSize);
-                y = (float)k / 2.0 * sin((i + 90 * rotation) * M_PI / 180.0) + (positionY*squareSize);
+                x = (float)k / 2.0 * cos((i + 90 * rotation) * M_PI / 180.0) + (posX*squareSize);
+                y = (float)k / 2.0 * sin((i + 90 * rotation) * M_PI / 180.0) + (posY*squareSize);
                 glVertex2f(x, y);
             }
         }
@@ -167,35 +167,6 @@ public:
     }
 };
 
-atomic<bool> running(true);
-enum class Direction { UP, DOWN, LEFT, RIGHT };
-void getInput(std::atomic<bool>& running, Direction& dir) {
-    while (running) {
-        char input;
-        std::cin >> input;
-
-        switch (input) {
-            case 'w':
-                dir = Direction::UP;
-                break;
-            case 's':
-                dir = Direction::DOWN;
-                break;
-            case 'a':
-                dir = Direction::LEFT;
-                break;
-            case 'd':
-                dir = Direction::RIGHT;
-                break;
-            case ' ': // Quit the game
-                running = false;
-                break;
-            default:
-                break;
-        }
-    }
-};
-
 class Game {
 private:
     Pacman& pacman;
@@ -214,6 +185,10 @@ private:
     int points = 0;
     // vector<Monster> monsters;
     vector<Drawable*> drawables;
+    bool moveUp = false;
+    bool moveDown = false;
+    bool moveLeft = false;
+    bool moveRight = false;
 
 public:
     vector<float> foodPositions;
@@ -224,19 +199,19 @@ public:
         keyStates = new bool[256];
 
         bitmap = {  { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 },
+                    { 1,0,0,0,0,0,1,1,1,0,0,0,0,0,1 },
+                    { 1,0,1,0,1,0,0,1,0,0,1,0,1,0,1 },
+                    { 1,0,1,0,1,1,0,1,0,1,1,0,1,0,1 },
+                    { 1,0,1,0,0,1,0,1,0,1,0,0,1,0,1 },
+                    { 1,0,1,1,0,0,0,0,0,0,0,1,1,0,1 },
+                    { 1,0,0,0,0,1,1,0,1,1,0,0,0,0,1 },
+                    { 1,0,1,1,0,1,0,0,0,1,0,1,1,0,1 },
+                    { 1,0,1,0,0,1,1,1,1,1,0,0,1,0,1 },
+                    { 1,0,0,0,1,1,1,0,1,1,1,0,0,0,1 },
+                    { 1,0,1,0,1,0,0,0,0,0,1,0,1,0,1 },
+                    { 1,0,1,0,0,0,1,0,1,0,0,0,1,0,1 },
+                    { 1,0,1,1,0,1,1,0,1,1,0,1,1,0,1 },
                     { 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1 },
-                    { 1,0,0,1,0,1,0,1,1,1,1,1,0,0,1 },
-                    { 1,0,1,1,0,1,0,1,1,1,1,1,1,0,1 },
-                    { 1,0,1,0,0,0,0,1,0,0,0,0,1,0,1 },
-                    { 1,0,1,1,0,1,1,1,1,0,1,0,1,0,1 },
-                    { 1,0,0,0,0,0,0,1,0,0,1,0,0,0,1 },
-                    { 1,0,1,1,1,1,0,1,1,1,1,1,1,0,1 },
-                    { 1,0,1,0,0,1,0,0,0,0,0,0,0,0,1 },
-                    { 1,0,1,1,1,1,0,1,1,1,1,1,1,0,1 },
-                    { 1,0,0,0,0,1,0,1,0,0,0,0,1,0,1 },
-                    { 1,1,1,1,0,1,0,1,1,1,1,0,1,0,1 },
-                    { 1,0,0,1,0,1,0,0,0,0,1,0,0,0,1 },
-                    { 1,0,1,1,1,1,1,1,1,1,1,1,1,0,1 },
                     { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 } };
 
         pacman.setInitialPosition(1.5,1.5); // IMPORTANT. SET'S INITIAL POSITION
@@ -247,7 +222,6 @@ public:
             delete drawable;
         }
     }
-
     
     void init() {
         // Clear screen
@@ -268,32 +242,27 @@ public:
     }
 
     void drawLaberynth() {
-        static vector<int> border = { 0, 0, 15, 1, 15, 15, 14, 1, 0, 14, 15, 15, 1, 14, 0, 0 }; //coordinates of the border walls
-        glColor3f(1.0, 1.0, 1.0);
-        //Border
-        for (int i = 0; i < border.size(); i = i + 4){
-            glRectf(border.at(i) * squareSize, border.at(i + 1)*squareSize, border.at(i + 2)*squareSize, border.at(i + 3)*squareSize);
+        for (int y = 0; y < bitmap.size(); ++y) {
+            for (int x = 0; x < bitmap[y].size(); ++x) {
+                if (bitmap[y][x] == 1) {
+                    // Calculate the coordinates of the rectangle to fill
+                    float left = x * squareSize;
+                    float bottom = y * squareSize;
+                    float right = (x + 1) * squareSize;
+                    float top = (y + 1) * squareSize;
+
+                    // Draw a filled rectangle for the obstacle
+                    glColor3f(1.0, 0.0, 0.0); // Red color for obstacles
+                    glRectf(left, bottom, right, top);
+                }
+            }
         }
 
-        //Obstacles
-        for (int j = 0; j < obstaclesBottom.size(); j = j + 4){
-            glRectf(obstaclesBottom.at(j) * squareSize, obstaclesBottom.at(j + 1)*squareSize, obstaclesBottom.at(j + 2)*squareSize, obstaclesBottom.at(j + 3)*squareSize);
+        // Draw the border
+        glColor3f(1.0, 1.0, 1.0); // White color for border
+        for (int i = 0; i < border.size(); i = i + 4) {
+            glRectf(border.at(i) * squareSize, border.at(i + 1) * squareSize, border.at(i + 2) * squareSize, border.at(i + 3) * squareSize);
         }
-        for (int k = 0; k < obstaclesMiddle.size(); k = k + 4){
-            glRectf(obstaclesMiddle.at(k) * squareSize, obstaclesMiddle.at(k + 1)*squareSize, obstaclesMiddle.at(k + 2)*squareSize, obstaclesMiddle.at(k + 3)*squareSize);
-        }
-        for (int p = 0; p < obstaclesTop.size(); p = p + 4){
-            glRectf(obstaclesTop.at(p) * squareSize, obstaclesTop.at(p + 1)*squareSize, obstaclesTop.at(p + 2)*squareSize, obstaclesTop.at(p + 3)*squareSize);
-        }
-
-        // // Spaces between food
-        // for (size_t row = 0; row < bitmap.size(); row++) {
-        //     for (size_t col = 0; col < bitmap[row].size(); col++) {
-        //         if (!bitmap[row][col]) {
-        //             glRectf(col * squareSize, row * squareSize, (col + 1) * squareSize, (row + 1) * squareSize);
-        //         }
-        //     }
-        // }
     }
 
     // Method to check if the food has been eaten
@@ -338,13 +307,161 @@ public:
     // Method to set the pressed key
     void keyPressed(unsigned char key, int x, int y) {
         keyStates[key] = true;
+        switch(key) {
+        case 'w':
+            this->xIncrement = 0.0f;
+            this->yIncrement = 1.5f;
+            this->rotation = 90.0f;
+            break;
+        case 'a':
+            this->xIncrement = -1.5f;
+            this->yIncrement = 0.0f;
+            this->rotation = 180.0f;
+            break;
+        case 's':
+            this->xIncrement = 0.0f;
+            this->yIncrement = -1.5f;
+            this->rotation = 270.0f;
+            break;
+        case 'd':
+            this->xIncrement = 1.5f;
+            this->yIncrement = 0.0f;
+            this->rotation = 0.0f;
+            break;
+        default:
+            break;
+    }
     }
 
     // Method to unset the released key
     void keyUp(unsigned char key, int x, int y) {
         keyStates[key] = false;
+        switch (key) {
+            case 'w':
+                moveUp = false;
+                break;
+            case 's':
+                moveDown = false;
+                break;
+            case 'a':
+                moveLeft = false;
+                break;
+            case 'd':
+                moveRight = false;
+                break;
+    }
     }
 
+    // Method to update the movement of the pacman according to the movement keys pressed
+    void keyOperations() {
+        // Update according to keys pressed
+        if (keyStates['a']) {
+            // Update xIncrement for left movement
+            xIncrement -= 2 / squareSize;
+            // Set rotation angle for left movement
+            pacman.rotate(2); // Assuming 2 is the left rotation angle
+        }
+        if (keyStates['d']) {
+            // Update xIncrement for right movement
+            xIncrement += 2 / squareSize;
+            // Set rotation angle for right movement
+            pacman.rotate(0); // Assuming 0 is the right rotation angle
+        }
+        if (keyStates['w']) {
+            // Update yIncrement for up movement
+            yIncrement -= 2 / squareSize;
+            // Set rotation angle for up movement
+            pacman.rotate(3); // Assuming 3 is the up rotation angle
+        }
+        if (keyStates['s']) {
+            // Update yIncrement for down movement
+            yIncrement += 2 / squareSize;
+            // Set rotation angle for down movement
+            pacman.rotate(1); // Assuming 1 is the down rotation angle
+        }
+        if (keyStates[' ']) {
+            if (!replay && over){
+                resetGame();
+                replay = true;
+            }
+            else if (replay && over){
+                replay = false;
+            }
+        }
+
+    // float nextX = (1.5 + xIncrement) * squareSize;
+    // float nextY = (1.5 + yIncrement) * squareSize;
+
+    // // Check for collision with obstacles
+    // int nextXQuadrant = (int)(nextX / squareSize);
+    // int nextYQuadrant = (int)(nextY / squareSize);
+    // if (!bitmap[nextXQuadrant][nextYQuadrant]) {
+    //     // No obstacle, update Pacman's position
+    //     x += xIncrement;
+    //     y += yIncrement;
+    // }
+
+    // Check for boundaries
+    // if (nextX < 0 || nextX > screenWidth || nextY < 0 || nextY > screenHeight) {
+    //     // Pacman will move out of bounds, don't update the position
+    //     return;
+    // }
+
+    // Update Pacman's position
+    // x += xIncrement;
+    // y += yIncrement;
+}
+
+    
+    // void keyOperations() {
+    //     // Get current position
+    //     float x = (1.5 + xIncrement) * squareSize;
+    //     float y = (1.5 + yIncrement) * squareSize;
+        
+    //     // Update according to keys pressed
+    //     if (keyStates['a']) {
+    //         x -= 2;
+    //         int x1Quadrant = (int)((x - 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+    //         if (!bitmap.at(x1Quadrant).at((int)y/squareSize)){
+    //             xIncrement -= 2 / squareSize;
+    //             rotation = 2;
+    //         }
+    //     }
+    //     if (keyStates['d']) {
+    //         x += 2;
+    //         int x2Quadrant = (int)((x + 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+    //         if (!bitmap.at(x2Quadrant).at((int)y / squareSize)){
+    //             xIncrement += 2 / squareSize;
+    //             rotation = 0;
+    //         }
+    //     }
+    //     if (keyStates['w']) {
+    //         y -= 2;
+    //         int y1Quadrant = (int)((y - 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+    //         if (!bitmap.at((int)x/squareSize).at(y1Quadrant)){
+    //             yIncrement -= 2 / squareSize;
+    //             rotation = 3;
+    //         }
+    //     }
+    //     if (keyStates['s']) {
+    //         y += 2;
+    //         int y2Quadrant = (int)((y + 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+    //         if (!bitmap.at((int)x / squareSize).at(y2Quadrant)){
+    //             yIncrement += 2 / squareSize;
+    //             rotation = 1;
+    //         }
+    //     }
+    //     if (keyStates[' ']) {
+    //         if (!replay && over){
+    //             resetGame();
+    //             replay = true;
+    //         }
+    //         else if (replay && over){
+    //             replay = false;
+    //         }
+    //     }
+    // }
+    
     // Method to reset the game state
     void resetGame() {
         over = false;
@@ -375,56 +492,6 @@ public:
             10.5, 6.5, 10.5, 7.5, 10.5, 8.5, 10.5, 11.5, 10.5, 12.5, 10.5, 13.5, 11.5, 1.5, 11.5, 2.5, 11.5, 3.5, 11.5, 4.5, 11.5, 5.5, 11.5, 6.5, 11.5, 8.5, 11.5, 9.5, 11.5, 10.5, 11.5, 11.5, 11.5, 13.5, 
             12.5, 1.5, 12.5, 6.5, 12.5, 9.5, 12.5, 13.5, 13.5, 1.5, 13.5, 2.5, 13.5, 3.5, 13.5, 4.5, 13.5, 5.5, 13.5, 6.5, 13.5, 7.5, 13.5, 8.5, 13.5, 9.5, 13.5, 10.5, 13.5, 11.5, 13.5, 12.5, 13.5 
         };
-    }
-
-    // Method to update the movement of the pacman according to the movement keys pressed
-    void keyOperations() {
-        // Get current position
-        float x = (1.5 + xIncrement) * squareSize;
-        float y = (1.5 + yIncrement) * squareSize;
-        
-        // Update according to keys pressed
-        if (keyStates['a']) {
-            x -= 2;
-            int x1Quadrant = (int)((x - 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-            if (!bitmap.at(x1Quadrant).at((int)y/squareSize)){
-                xIncrement -= 2 / squareSize;
-                rotation = 2;
-            }
-        }
-        if (keyStates['d']) {
-            x += 2;
-            int x2Quadrant = (int)((x + 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-            if (!bitmap.at(x2Quadrant).at((int)y / squareSize)){
-                xIncrement += 2 / squareSize;
-                rotation = 0;
-            }
-        }
-        if (keyStates['w']) {
-            y -= 2;
-            int y1Quadrant = (int)((y - 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-            if (!bitmap.at((int)x/squareSize).at(y1Quadrant)){
-                yIncrement -= 2 / squareSize;
-                rotation = 3;
-            }
-        }
-        if (keyStates['s']) {
-            y += 2;
-            int y2Quadrant = (int)((y + 16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-            if (!bitmap.at((int)x / squareSize).at(y2Quadrant)){
-                yIncrement += 2 / squareSize;
-                rotation = 1;
-            }
-        }
-        if (keyStates[' ']) {
-            if (!replay && over){
-                resetGame();
-                replay = true;
-            }
-            else if (replay && over){
-                replay = false;
-            }
-        }
     }
 
     // Method to check if the game is over

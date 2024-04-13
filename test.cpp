@@ -193,10 +193,10 @@ public:
 
         pacman.setInitialPosition(1.5,1.5); // IMPORTANT. SET'S INITIAL POSITION
 
-        monsters.push_back(Monster(10.5, 8.5, 1.0, 0.0, 0.0)); // Red
-        monsters.push_back(Monster(13.5, 1.5, 0.0, 1.0, 0.0)); // Green
-        monsters.push_back(Monster(4.5, 6.5, 0.0, 0.0, 1.0));  // Blue
-        monsters.push_back(Monster(2.5, 13.5, 1.0, 1.0, 0.0)); // Yellow    
+        // monsters.push_back(Monster(7.5, 8.5, 1.0, 0.0, 0.0)); // Red
+        // monsters.push_back(Monster(8.5, 8.5, 0.0, 1.0, 0.0)); // Green
+        // monsters.push_back(Monster(9.5, 8.5, 0.0, 0.0, 1.0));  // Blue
+        // monsters.push_back(Monster(8.5, 9.5, 1.0, 1.0, 0.0)); // Yellow    
     
     }
 

@@ -8,11 +8,12 @@
 #include <iostream>
 #include <vector>
 #include <deque>
-#include <cmath>
 #include <thread>
 #include <atomic>
 #include <string>
 #include <memory>
+#include <type_traits>
+
 
 using namespace std;
 
@@ -37,67 +38,6 @@ public:
         }
     }
 };
-
-class Monster : public Obstacle {
-private:
-    atomic<float> positionX;
-    atomic<float> positionY;
-    float colorR;
-    float colorG;
-    float colorB;
-    atomic<int> direction;
-    std::string name;
-
-public:
-    Monster() : positionX(0.0), positionY(0.0), direction (0) {}
-
-    Monster(float x, float y, float r, float g, float b)
-        : positionX(x), positionY(y), colorR(r), colorG(g), colorB(b), direction(0) {}
-
-    float getPositionX() const { return positionX; }
-    float getPositionY() const { return positionY; }
-    float getColorR() const { return colorR; }
-    float getColorG() const { return colorG; }
-    float getColorB() const { return colorB; }
-
-    void draw(float posX, float posY, float r, float g, float b) const {
-        int x, y;
-        glBegin(GL_LINES);
-        glColor3f(r, g, b);
-        
-        // Draw the head
-        for (int k = 0; k < 32; k++) {
-            x = (float)k / 2.0 * cos(360 * M_PI / 180.0) + (posX);
-            y = (float)k / 2.0 * sin(360 * M_PI / 180.0) + (posY);
-            for (int i = 180; i <= 360; i++) {
-                glVertex2f(x, y);
-                x = (float)k / 2.0 * cos(i * M_PI / 180.0) + (posX);
-                y = (float)k / 2.0 * sin(i * M_PI / 180.0) + (posY);
-                glVertex2f(x, y);
-            }
-        }
-        glEnd();
-
-        // Draw body
-        glRectf((positionX) - 17, positionY, (positionX) + 15, (positionY) + 15);
-        
-        // Draw eyes and legs
-        glBegin(GL_POINTS);
-        glColor3f(0, 0.2, 0.4);
-        glVertex2f((positionX) - 11, (positionY) + 14); // Legs
-        glVertex2f((positionX) - 1, (positionY) + 14);  // Legs
-        glVertex2f((positionX) + 8, (positionY) + 14);  // Legs
-        glVertex2f((positionX) + 4, (positionY) - 3);   // Eyes
-        glVertex2f((positionX) - 7, (positionY) - 3);   // Eyes
-        glEnd();
-    }
-
-    void setInitialPosition(float x, float y) { 
-        positionX = x;
-        positionY = y;
-    }
-};
-
 
 class Pacman : public Obstacle {
 private:
@@ -142,6 +82,70 @@ public:
     }
 };
 
+// Define a template function to check if types match
+template<typename Expected, typename Actual>
+bool checkType() { return std::is_same<Expected, Actual>::value; }
+
+class Monster {
+private:
+    float posX;
+    float posY;
+    int id; // Monster number
+    float position[2]; // Array to hold position (x,y)
+    float colorR, colorG, colorB;
+
+public:
+    Monster() : id(0), posX(0.0), posY(0.0), colorR(0.0), colorG(0.0), colorB(0.0) {}
+    
+    Monster(int monsterID, float x, float y, float r, float g, float b) 
+        : id(monsterID), posX(x), posY(y), colorR(r), colorG(g), colorB(b) {}
+    ~Monster() {}
+
+    float getColorR() const { return colorR; }
+    float getColorG() const { return colorG; }
+    float getColorB() const { return colorB; }
+    int getID() const { return id; }
+    const float* getPosition() const { return position; }
+
+    
+    void draw(float posX, float posY, float r, float g, float b) const {
+        int x, y;
+        glBegin(GL_LINES);
+        glColor3f(r, g, b);
+        
+        // Draw the head
+        for (int k = 0; k < 32; k++) {
+            x = (float)k / 2.0 * cos(360 * M_PI / 180.0) + (posX);
+            y = (float)k / 2.0 * sin(360 * M_PI / 180.0) + (posY);
+            for (int i = 180; i <= 360; i++) {
+                glVertex2f(x, y);
+                x = (float)k / 2.0 * cos(i * M_PI / 180.0) + (posX);
+                y = (float)k / 2.0 * sin(i * M_PI / 180.0) + (posY);
+                glVertex2f(x, y);
+            }
+        }
+        glEnd();
+
+        // Draw body
+        glRectf(posX - 17, posY, posX + 15, posY + 15);
+        
+        // Draw eyes and legs
+        glBegin(GL_POINTS);
+        glColor3f(0, 0.2, 0.4);
+        glVertex2f(posX - 11, posY + 14); // Legs
+        glVertex2f(posX - 1, posY + 14);  // Legs
+        glVertex2f(posX + 8, posY + 14);  // Legs
+        glVertex2f(posX + 4, posY - 3);   // Eyes
+        glVertex2f(posX - 7, posY - 3);   // Eyes
+        glEnd();
+        }
+    
+    void setInitialPosition(float x, float y) {
+        position[0] = x;
+        position[1] = y;
+    }
+};
+
 class Game {
 private:
     Pacman& pacman;
@@ -158,7 +162,7 @@ private:
     deque<float> food;
     vector<vector<bool>> bitmap1;
     int points = 0;
-    vector<Monster>& monsters;
+    vector<Monster> monsters;
     vector<Drawable*> drawables;
     bool moveUp = false;
     bool moveDown = false;
@@ -191,14 +195,30 @@ public:
                     { 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1 },
                     { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 } };
 
-        pacman.setInitialPosition(1.5,1.5); // IMPORTANT. SET'S INITIAL POSITION
+        pacman.setInitialPosition(1.5,1.5);
 
-        // monsters.push_back(Monster(7.5, 8.5, 1.0, 0.0, 0.0)); // Red
-        // monsters.push_back(Monster(8.5, 8.5, 0.0, 1.0, 0.0)); // Green
-        // monsters.push_back(Monster(9.5, 8.5, 0.0, 0.0, 1.0));  // Blue
-        // monsters.push_back(Monster(8.5, 9.5, 1.0, 1.0, 0.0)); // Yellow    
+        // // Initialize monsters with correct positions directly
+        // vector<Monster> monsters = {
+        //     Monster (1, 1.5 * squareSize, 1.5 * squareSize, 1.0, 0.0, 0.0), // Red
+        //     Monster (2, 13.5 * squareSize, 1.5 * squareSize, 0.0, 1.0, 0.0), // Green
+        //     Monster (3, 4.5 * squareSize, 6.5 * squareSize, 0.0, 0.0, 1.0),  // Blue
+        //     Monster (4, 2.5 * squareSize, 13.5 * squareSize, 1.0, 1.0, 0.0) // Yellow
+        // };
+
     
-    }
+        // monsters.clear();
+        // // Initialize monsters with correct positions directly
+        // monsters.emplace_back(Monster(1, 1.5 * squareSize, 1.5 * squareSize, 1.0, 0.0, 0.0)); // Red
+        // monsters.emplace_back(Monster(2, 13.5 * squareSize, 1.5 * squareSize, 0.0, 1.0, 0.0)); // Green
+        // monsters.emplace_back(Monster(3, 4.5 * squareSize, 6.5 * squareSize, 0.0, 0.0, 1.0));  // Blue
+        // monsters.emplace_back(Monster(4, 2.5 * squareSize, 13.5 * squareSize, 1.0, 1.0, 0.0)); // Yellow
+
+        // // Set initial positions for monsters
+        // monsters[0].setInitialPosition(1.5 * squareSize, 1.5 * squareSize); // Red
+        // monsters[1].setInitialPosition(13.5 * squareSize, 1.5 * squareSize); // Green
+        // monsters[2].setInitialPosition(4.5 * squareSize, 6.5 * squareSize);  // Blue
+        // monsters[3].setInitialPosition(2.5 * squareSize, 13.5 * squareSize); // Yellow
+}
 
     ~Game() {
         for (auto drawable : drawables) {
@@ -279,60 +299,68 @@ public:
     }
 
     // Method to update the position of the monster randomly
-    virtual void updatePosition(float* monster, int id) {
-        int x1Quadrant = (int)((monster[0] - (2/squareSize)) - (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-		int x2Quadrant = (int)((monster[0] + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-		int y1Quadrant = (int)((monster[1] - (2/squareSize)) - (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
-		int y2Quadrant = (int)((monster[1] + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+    virtual void updatePosition(float* monster, int id){
+        for (auto& monster : monsters) {
+            float* position = const_cast<float*>(monster.getPosition()); // Get the position
+            updatePosition(position, monster.getID()); // Update the position
+        }
         
+        // Find the current position of the monster
+        int x1Quadrant = (int)((monster[0] - (2/squareSize)) - (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+        int x2Quadrant = (int)((monster[0] + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+        int y1Quadrant = (int)((monster[1] - (2/squareSize)) - (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+        int y2Quadrant = (int)((monster[1] + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
+
+        // Move the monster according to its direction until it hits an obstacle
         switch ((int)monster[2]){
-		case 1:
-			if (!bitmap1.at(x1Quadrant).at((int)monster[1])){ 
-				monster[0] -= 2 / squareSize;
-			}else {
-				int current = monster[2];
-				do{
-					monster[2] =  (rand() % 4) + 1;
-				} while (current == (int) monster[2]);
-			}
-			break;
-		case 2:
-			if (!bitmap1.at(x2Quadrant).at((int)monster[1])){
-				monster[0] += 2 / squareSize;
-			}
-			else {
-				int current = monster[2];
-				do{
-					monster[2] = (rand() % 4) + 1;
-				} while (current == (int)monster[2]);
-			}
-			break;
-		case 3:
-			if (!bitmap1.at((int)monster[0]).at(y1Quadrant)){
-				monster[1] -= 2 / squareSize;
-			}
-			else {
-				int current = monster[2];
-				do{
-					monster[2] = (rand() % 4) + 1;
-				} while (current == (int)monster[2]);
-			}
-			break;
-		case 4:
-			if (!bitmap1.at((int)monster[0]).at(y2Quadrant)){
-				monster[1] += 2 / squareSize;
-			}
-			else {
-				int current = monster[2];
-				do{
-					monster[2] = (rand() % 4) + 1;
-				} while (current == (int)monster[2]);
-			}
-			break;
-		default:
-			break;
-		}
-    }
+            case 1: // Move left
+                if (!bitmap1.at(x1Quadrant).at((int)monster[1])){ 
+                    monster[0] -= 2 / squareSize;
+                } else {
+                    // Change direction if obstacle encountered
+                    int current = monster[2];
+                    do{
+                        monster[2] =  (rand() % 4) + 1;
+                    } while (current == (int) monster[2]);
+                }
+                break;
+            case 2: // Move right
+                if (!bitmap1.at(x2Quadrant).at((int)monster[1])){
+                    monster[0] += 2 / squareSize;
+                } else {
+                    // Change direction if obstacle encountered
+                    int current = monster[2];
+                    do{
+                        monster[2] = (rand() % 4) + 1;
+                    } while (current == (int)monster[2]);
+                }
+                break;
+            case 3: // Move up
+                if (!bitmap1.at((int)monster[0]).at(y1Quadrant)){
+                    monster[1] -= 2 / squareSize;
+                } else {
+                    // Change direction if obstacle encountered
+                    int current = monster[2];
+                    do{
+                        monster[2] = (rand() % 4) + 1;
+                    } while (current == (int)monster[2]);
+                }
+                break;
+            case 4: // Move down
+                if (!bitmap1.at((int)monster[0]).at(y2Quadrant)){
+                    monster[1] += 2 / squareSize;
+                } else {
+                    // Change direction if obstacle encountered
+                    int current = monster[2];
+                    do{
+                        monster[2] = (rand() % 4) + 1;
+                    } while (current == (int)monster[2]);
+                }
+                break;
+            default:
+                break;
+            }
+        }
 
     // Method to set the pressed key
     void keyPressed(unsigned char key, int x, int y) {
@@ -438,7 +466,7 @@ public:
         if (keyStates['a'] || keyStates[LEFT_ARROW]) {
             x -= 2;
             int x1Quadrant = (int)((x - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[x1Quadrant][(int)y / squareSize]) {
+            if (!this->bitmap1[(int)y / squareSize][x1Quadrant]) {
             //if (!bitmap1.at(x1Quadrant).at((int)y / squareSize)) {
                 xIncrement -= 2 / squareSize;
                 pacman.rotate(2);
@@ -447,8 +475,7 @@ public:
         if (keyStates['d'] || keyStates[RIGHT_ARROW]) {
             x += 2;
             int x2Quadrant = (int)((x + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[x2Quadrant][(int)y / squareSize]) {
-            //if (!bitmap1.at(x2Quadrant).at((int)y / squareSize)) {
+            if (!this->bitmap1[(int)y / squareSize][x2Quadrant]) {
                 xIncrement += 2 / squareSize;
                 pacman.rotate(0);
             }
@@ -456,8 +483,7 @@ public:
         if (keyStates['w'] || keyStates[UP_ARROW]) {
             y -= 2;
             int y1Quadrant = (int)((y - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)x / squareSize][y1Quadrant]) {
-            //if (!bitmap1.at((int)x / squareSize).at(y1Quadrant)) {
+            if (!this->bitmap1[y1Quadrant][(int)x / squareSize]) {
                 yIncrement -= 2 / squareSize;
                 pacman.rotate(3);
             }
@@ -465,8 +491,7 @@ public:
         if (keyStates['s'] || keyStates[DOWN_ARROW]) {
             y += 2;
             int y2Quadrant = (int)((y + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)x / squareSize][y2Quadrant]) {
-            //if (!bitmap1.at((int)x / squareSize).at(y2Quadrant)) {
+            if (!this->bitmap1[y2Quadrant][(int)x / squareSize]) {
                 yIncrement += 2 / squareSize;
                 pacman.rotate(1);
             }
@@ -497,7 +522,7 @@ public:
         //     }
         // }
 
-        if (points == 106) {
+        if (points == 105) {
             over = true; // If all food is eaten, game over
         }
     }
@@ -506,7 +531,7 @@ public:
     void resultsDisplay() {
         glClearColor(0, 0, 0, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
-        if (points == 106) {
+        if (points == 105) {
             //Won
             const char* message = "*************************************";
             glRasterPos2f(170, 250);
@@ -601,9 +626,26 @@ public:
                 this->drawLaberynth();
                 this->drawFood((1.5 + this->xIncrement) * this->squareSize, (1.5 + this->yIncrement) * this->squareSize);
                 this->pacman.draw(1.5 + this->xIncrement, 1.5 + this->yIncrement, this->rotation);
-                for (const auto& monster : monsters) {
-                    monster.draw(monster.getPositionX(), monster.getPositionY(), monster.getColorR(), monster.getColorG(), monster.getColorB());
-}            
+
+                // Make a copy of monsters vector to avoid type qualifier issues
+                std::vector<Monster> monstersCopy(std::make_move_iterator(monsters.begin()), std::make_move_iterator(monsters.end()));
+
+                // Set initial position for each monster in the copy
+                monstersCopy[0].setInitialPosition(1.5*squareSize, 1.5*squareSize); // Top-left corner
+                monstersCopy[1].setInitialPosition(9.5*squareSize, 2.5*squareSize); // Top-right corner
+                monstersCopy[2].setInitialPosition(12.5*squareSize, 17.5*squareSize); // Bottom-left corner
+                monstersCopy[3].setInitialPosition(14.5*squareSize, 13.5*squareSize); // Bottom-right corner
+
+                for (size_t i = 0; i < monstersCopy.size(); ++i) {
+                    // Get const pointer to position
+                    const float* positionPtr = monstersCopy[i].getPosition(); 
+                    // Create non-const copy of position
+                    float positionCopy[2] = {positionPtr[0], positionPtr[1]}; 
+                    // Update position
+                    updatePosition(positionCopy, i); 
+                    // Draw monster
+                    monstersCopy[i].draw(positionCopy[0], positionCopy[1], monstersCopy[i].getColorR(), monstersCopy[i].getColorG(), monstersCopy[i].getColorB());
+                }
             } else {
                 this->resultsDisplay();
             }
@@ -626,7 +668,14 @@ public:
     
 // Declare the game object globally
 std::unique_ptr<Pacman> pacmanPtr(new Pacman);
-std::vector<Monster> monsters(4);
+float squareSize = 50.0;
+std::vector<Monster> monsters{
+    
+    Monster(1, 1.5 * squareSize, 1.5 * squareSize, 1.0, 0.0, 0.0), // Red
+    Monster(2, 13.5 * squareSize, 1.5 * squareSize, 0.0, 1.0, 0.0), // Green
+    Monster(3, 4.5 * squareSize, 6.5 * squareSize, 0.0, 0.0, 1.0),  // Blue
+    Monster(4, 2.5 * squareSize, 13.5 * squareSize, 1.0, 1.0, 0.0) // Yellow
+};
 Game game(*pacmanPtr, monsters);
 
 // Define static functions
@@ -650,6 +699,7 @@ void specialKeyPressedCallback(int key, int x, int y) {
             break;
     }
 }
+
 void specialKeyUpCallback(int key, int x, int y) {
     switch (key) {
         case GLUT_KEY_UP:
@@ -669,12 +719,39 @@ void specialKeyUpCallback(int key, int x, int y) {
 
 
 int main(int argc, char** argv) {
+    
+    // Example usage:
+    int monsterID = 1;
+    float x = 1.5;
+    float y = 2.0;
+    float r = 1.0;
+    float g = 0.0;
+    float b = 0.0;
+
+    // Check types before passing arguments to the Monster constructor
+    bool typesMatch = checkType<int, decltype(monsterID)>() &&
+                      checkType<float, decltype(x)>() &&
+                      checkType<float, decltype(y)>() &&
+                      checkType<float, decltype(r)>() &&
+                      checkType<float, decltype(g)>() &&
+                      checkType<float, decltype(b)>();
+
+    if (typesMatch) {
+        // Types match, proceed with creating the Monster
+        Monster monster(monsterID, x, y, r, g, b);
+        // Other operations...
+    } else {
+        // Types don't match, handle the error
+        std::cerr << "Error: Argument types don't match the expected types." << std::endl;
+    }
+    
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     glutInitWindowSize(750, 750);
     glutInitWindowPosition(500, 50);
     glutCreateWindow("Pacman");
     
+
     // Set GLUT callbacks
     glutKeyboardFunc(keyPressedCallback);
     glutKeyboardUpFunc(keyUpCallback);

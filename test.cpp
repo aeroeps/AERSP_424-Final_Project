@@ -328,57 +328,6 @@ public:
         int y2Quadrant = (int)((monster[1] + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
 
         // Move the monster according to its direction until it hits an obstacle
-        // switch ((int)monster[2]){
-        //     case 1: // Move left
-        //         if (!bitmap1.at(x1Quadrant).at((int)monster[1])){ 
-        //             monster[0] -= 2 / squareSize;
-        //         } else {
-        //             // Change direction if obstacle encountered
-        //             int current = monster[2];
-        //             do{
-        //                 monster[2] =  (rand() % 4) + 1;
-        //             } while (current == (int) monster[2]);
-        //         }
-        //         break;
-        //     case 2: // Move right
-        //         if (!bitmap1.at(x2Quadrant).at((int)monster[1])){
-        //             monster[0] += 2 / squareSize;
-        //         } else {
-        //             // Change direction if obstacle encountered
-        //             int current = monster[2];
-        //             do{
-        //                 monster[2] = (rand() % 4) + 1;
-        //             } while (current == (int)monster[2]);
-        //         }
-        //         break;
-        //     case 3: // Move up
-        //         if (!bitmap1.at((int)monster[0]).at(y1Quadrant)){
-        //             monster[1] -= 2 / squareSize;
-        //         } else {
-        //             // Change direction if obstacle encountered
-        //             int current = monster[2];
-        //             do{
-        //                 monster[2] = (rand() % 4) + 1;
-        //             } while (current == (int)monster[2]);
-        //         }
-        //         break;
-        //     case 4: // Move down
-        //         if (!bitmap1.at((int)monster[0]).at(y2Quadrant)){
-        //             monster[1] += 2 / squareSize;
-        //         } else {
-        //             // Change direction if obstacle encountered
-        //             int current = monster[2];
-        //             do{
-        //                 monster[2] = (rand() % 4) + 1;
-        //             } while (current == (int)monster[2]);
-        //         }
-        //         break;
-        //     default:
-        //         break;
-        //     }
-        // }
-
-        // Move the monster according to its direction until it hits an obstacle
     switch ((int)monster[2]){
         case 1: // Move left
             if (!bitmap1.at(x1Quadrant).at((int)monster[1])){ 

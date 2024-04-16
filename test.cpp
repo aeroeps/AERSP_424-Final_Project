@@ -106,6 +106,7 @@ public:
     float getColorB() const { return colorB; }
     int getID() const { return id; }
     const float* getPosition() const { return position; }
+    void setPosition(float x, float y) { position[0] = x; position[1] = y; }
 
     
     void draw(float posX, float posY, float r, float g, float b) const {
@@ -213,11 +214,11 @@ public:
         // monsters.emplace_back(Monster(3, 4.5 * squareSize, 6.5 * squareSize, 0.0, 0.0, 1.0));  // Blue
         // monsters.emplace_back(Monster(4, 2.5 * squareSize, 13.5 * squareSize, 1.0, 1.0, 0.0)); // Yellow
 
-        // // Set initial positions for monsters
-        // monsters[0].setInitialPosition(1.5 * squareSize, 1.5 * squareSize); // Red
-        // monsters[1].setInitialPosition(13.5 * squareSize, 1.5 * squareSize); // Green
-        // monsters[2].setInitialPosition(4.5 * squareSize, 6.5 * squareSize);  // Blue
-        // monsters[3].setInitialPosition(2.5 * squareSize, 13.5 * squareSize); // Yellow
+        // Set initial positions for monsters
+        monsters[0].setInitialPosition(1.5 * squareSize, 1.5 * squareSize); // Red
+        monsters[1].setInitialPosition(13.5 * squareSize, 1.5 * squareSize); // Green
+        monsters[2].setInitialPosition(4.5 * squareSize, 6.5 * squareSize);  // Blue
+        monsters[3].setInitialPosition(2.5 * squareSize, 13.5 * squareSize); // Yellow
 }
 
     ~Game() {
@@ -234,14 +235,10 @@ public:
         // Reset all keys
         for (int i = 0; i < 256; i++) { keyStates[i] = false; }    
         
-        // Initialize monsters
-        // monsters.push_back(Monster(10.5, 8.5, 0.0, 0.0, 0.1)); // blue colored monster
-        // Add more monster initialization here
-
-        // Initialize obstacles
-        drawables.push_back(new Obstacle(obstaclesTop));
-        drawables.push_back(new Obstacle(obstaclesMiddle));
-        drawables.push_back(new Obstacle(obstaclesBottom));
+        // // Initialize obstacles
+        // drawables.push_back(new Obstacle(obstaclesTop));
+        // drawables.push_back(new Obstacle(obstaclesMiddle));
+        // drawables.push_back(new Obstacle(obstaclesBottom));
     }
 
     void drawLaberynth() {
@@ -298,6 +295,25 @@ public:
         glEnd();
     }
 
+    void changeDirection(float* monster) {
+        int current = static_cast<int>(monster[2]); // Cast to int for comparison
+        int newDirection;
+        do {
+            newDirection = (rand() % 4) + 1;
+        } while (current == newDirection);
+
+        monster[2] = static_cast<float>(newDirection); // Update the direction
+    }
+
+    // void setupMonsters() {
+    //     // Initialize monsters and set their initial positions
+    //     Monster monster1(/* parameters for Monster constructor */);
+    //     monster1.setPosition(/* initial position coordinates */);
+    //     monsters.push_back(monster1);
+
+    //     // Similarly initialize and set initial positions for other monsters...
+    // }
+
     // Method to update the position of the monster randomly
     virtual void updatePosition(float* monster, int id){
         for (auto& monster : monsters) {
@@ -312,55 +328,94 @@ public:
         int y2Quadrant = (int)((monster[1] + (2/squareSize)) + (16.0 *cos(360 * M_PI / 180.0)) / squareSize);
 
         // Move the monster according to its direction until it hits an obstacle
-        switch ((int)monster[2]){
-            case 1: // Move left
-                if (!bitmap1.at(x1Quadrant).at((int)monster[1])){ 
-                    monster[0] -= 2 / squareSize;
-                } else {
-                    // Change direction if obstacle encountered
-                    int current = monster[2];
-                    do{
-                        monster[2] =  (rand() % 4) + 1;
-                    } while (current == (int) monster[2]);
-                }
-                break;
-            case 2: // Move right
-                if (!bitmap1.at(x2Quadrant).at((int)monster[1])){
-                    monster[0] += 2 / squareSize;
-                } else {
-                    // Change direction if obstacle encountered
-                    int current = monster[2];
-                    do{
-                        monster[2] = (rand() % 4) + 1;
-                    } while (current == (int)monster[2]);
-                }
-                break;
-            case 3: // Move up
-                if (!bitmap1.at((int)monster[0]).at(y1Quadrant)){
-                    monster[1] -= 2 / squareSize;
-                } else {
-                    // Change direction if obstacle encountered
-                    int current = monster[2];
-                    do{
-                        monster[2] = (rand() % 4) + 1;
-                    } while (current == (int)monster[2]);
-                }
-                break;
-            case 4: // Move down
-                if (!bitmap1.at((int)monster[0]).at(y2Quadrant)){
-                    monster[1] += 2 / squareSize;
-                } else {
-                    // Change direction if obstacle encountered
-                    int current = monster[2];
-                    do{
-                        monster[2] = (rand() % 4) + 1;
-                    } while (current == (int)monster[2]);
-                }
-                break;
-            default:
-                break;
+        // switch ((int)monster[2]){
+        //     case 1: // Move left
+        //         if (!bitmap1.at(x1Quadrant).at((int)monster[1])){ 
+        //             monster[0] -= 2 / squareSize;
+        //         } else {
+        //             // Change direction if obstacle encountered
+        //             int current = monster[2];
+        //             do{
+        //                 monster[2] =  (rand() % 4) + 1;
+        //             } while (current == (int) monster[2]);
+        //         }
+        //         break;
+        //     case 2: // Move right
+        //         if (!bitmap1.at(x2Quadrant).at((int)monster[1])){
+        //             monster[0] += 2 / squareSize;
+        //         } else {
+        //             // Change direction if obstacle encountered
+        //             int current = monster[2];
+        //             do{
+        //                 monster[2] = (rand() % 4) + 1;
+        //             } while (current == (int)monster[2]);
+        //         }
+        //         break;
+        //     case 3: // Move up
+        //         if (!bitmap1.at((int)monster[0]).at(y1Quadrant)){
+        //             monster[1] -= 2 / squareSize;
+        //         } else {
+        //             // Change direction if obstacle encountered
+        //             int current = monster[2];
+        //             do{
+        //                 monster[2] = (rand() % 4) + 1;
+        //             } while (current == (int)monster[2]);
+        //         }
+        //         break;
+        //     case 4: // Move down
+        //         if (!bitmap1.at((int)monster[0]).at(y2Quadrant)){
+        //             monster[1] += 2 / squareSize;
+        //         } else {
+        //             // Change direction if obstacle encountered
+        //             int current = monster[2];
+        //             do{
+        //                 monster[2] = (rand() % 4) + 1;
+        //             } while (current == (int)monster[2]);
+        //         }
+        //         break;
+        //     default:
+        //         break;
+        //     }
+        // }
+
+        // Move the monster according to its direction until it hits an obstacle
+    switch ((int)monster[2]){
+        case 1: // Move left
+            if (!bitmap1.at(x1Quadrant).at((int)monster[1])){ 
+                monster[0] -= 2 / squareSize;
+            } else {
+                // Change direction if obstacle encountered
+                changeDirection(monster);
             }
-        }
+            break;
+        case 2: // Move right
+            if (!bitmap1.at(x2Quadrant).at((int)monster[1])){
+                monster[0] += 2 / squareSize;
+            } else {
+                // Change direction if obstacle encountered
+                changeDirection(monster);
+            }
+            break;
+        case 3: // Move up
+            if (!bitmap1.at((int)monster[0]).at(y1Quadrant)){
+                monster[1] -= 2 / squareSize;
+            } else {
+                // Change direction if obstacle encountered
+                changeDirection(monster);
+            }
+            break;
+        case 4: // Move down
+            if (!bitmap1.at((int)monster[0]).at(y2Quadrant)){
+                monster[1] += 2 / squareSize;
+            } else {
+                // Change direction if obstacle encountered
+                changeDirection(monster);
+            }
+            break;
+        default:
+            break;
+    }
+    }
 
     // Method to set the pressed key
     void keyPressed(unsigned char key, int x, int y) {
@@ -636,16 +691,16 @@ public:
                 monstersCopy[2].setInitialPosition(12.5*squareSize, 17.5*squareSize); // Bottom-left corner
                 monstersCopy[3].setInitialPosition(14.5*squareSize, 13.5*squareSize); // Bottom-right corner
 
-                for (size_t i = 0; i < monstersCopy.size(); ++i) {
-                    // Get const pointer to position
-                    const float* positionPtr = monstersCopy[i].getPosition(); 
-                    // Create non-const copy of position
-                    float positionCopy[2] = {positionPtr[0], positionPtr[1]}; 
-                    // Update position
-                    updatePosition(positionCopy, i); 
-                    // Draw monster
-                    monstersCopy[i].draw(positionCopy[0], positionCopy[1], monstersCopy[i].getColorR(), monstersCopy[i].getColorG(), monstersCopy[i].getColorB());
+                // Draw monsters
+                for (const auto& monster : monstersCopy) {
+                    monster.draw(monster.getPosition()[0], monster.getPosition()[1], monster.getColorR(), monster.getColorG(), monster.getColorB());
+                    // updatePosition(monster.getPosition(), monster.getID());
+                    
+                    // float* currentPosition = monster.getPosition();
+                    // monster.setPosition(currentPosition[0] + 1.0f, currentPosition[1]);
+                
                 }
+
             } else {
                 this->resultsDisplay();
             }

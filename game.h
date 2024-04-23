@@ -35,55 +35,29 @@ private:
     bool moveDown;
     bool moveLeft;
     bool moveRight;
-    float x;
-    float y;
+    float x_p;
+    float y_p;
+    float x_g;
+    float y_g;
     std::vector<float> foodPositions;
 
 public:
-    // Constructor taking references to Pacman and Ghost
     Game(Pacman& p, Ghost& g);
-
-    // Destructor
     virtual ~Game();
-
-    // Initialize gameplay
     void init();
-
-    // Draw the labyrinth
     void drawLaberynth();
-
-    // Check if the food at (x, y) is eaten based on Pacman's position
     bool foodEaten(int x, int y, float pacmanX, float pacmanY);
-
-    // Draw all remaining food and update points
     void drawFood(float pacmanX, float pacmanY);    
-
-    // Handle key press/ release events
     void keyPressed(unsigned char key, int x, int y);
     void keyUp(unsigned char key, int x, int y);
-
-    // Reset the game and all necessary attributes to default status
     void resetGame();
-
-    // Update game state based on key operations
     void keyOperations();
-
-    // Check if the game is over
     void gameOver();
-
-    // Display the game results
     void resultsDisplay();
-
-    // Display the welcome screen
     void welcomeScreen();
-
-    // Display game elements
     void display();
-
-    // Reshape the game if the window size changes
     void reshape(int w, int h);
-
-    bool* keyStates;
+    std::vector<bool> keyStates;
 };
 
 #endif // GAME_H

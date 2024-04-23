@@ -16,9 +16,7 @@
 #include <atomic>
 #include <string>
 #include <memory>
-#include <type_traits>
-float x_g = 0;
-float y_g = 0;
+#include <cmath>
 
 
 
@@ -51,18 +49,6 @@ public:
     }
 
     void Pacman::rotate(int angle) { rotation = angle; }
-
-    void Pacman::move(float xIncrement, float yIncrement) {
-        float oldX = positionX.load();
-        float oldY = positionY.load();
-        positionX.store(oldX + xIncrement);
-        positionY.store(oldY + yIncrement);
-    }
-
-    void Pacman::setInitialPosition(float x, float y) {
-        positionX = x;
-        positionY = y;
-    }
 
 // ** GHOST
     
@@ -102,23 +88,11 @@ public:
         glEnd();
     }
 
-    void Ghost::move(float xIncrementg, float yIncrementg) {
-        float oldX = positionXg.load();
-        float oldY = positionYg.load();
-        positionXg.store(oldX + xIncrementg);
-        positionYg.store(oldY + yIncrementg);
-    }
-
-    void Ghost::setInitialPosition(float x, float y) {
-        positionXg = x;
-        positionYg = y;
-    }
 
 
 // ** GAME
-    Game::Game(Pacman& p, Ghost& g) : pacman(p), ghost(g), replay(false), over(true), squareSize(50.0), xIncrementp(0), yIncrementp(0), xIncrementg(0), yIncrementg(0), rotation(0), points(0) {
+    Game::Game(Pacman& p, Ghost& g) : pacman(p), ghost(g), replay(false), over(true), squareSize(50.0), xIncrementp(0), yIncrementp(0), xIncrementg(1.5), yIncrementg(1.5), rotation(0), points(0) {
         
-            
             keyStates.resize(256);
 
             bitmap1 = { { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 },
@@ -136,9 +110,6 @@ public:
                         { 1,0,1,1,0,1,1,0,1,1,0,1,1,0,1 },
                         { 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1 },
                         { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 } };
-
-            pacman.setInitialPosition(1.5,1.5);
-            ghost.setInitialPosition(1.5, 1.5);
     }
 
     Game::~Game() {
@@ -149,8 +120,8 @@ public:
     
     void Game::init() {
         // Clear screen
-        glClearColor(0.0, 0.0, 0.0, 0.0);
-        glShadeModel(GL_FLAT);
+        //glClearColor(0.0, 0.0, 0.0, 0.0);
+        //glShadeModel(GL_FLAT);
 
         // Reset all keys
         for (int i = 0; i < 256; i++) { keyStates[i] = false; }    
@@ -210,58 +181,15 @@ public:
         glEnd();
     }
 
-    // Method to set the pressed key
-    void Game::keyPressed(unsigned char key, int x, int y) {
-        keyStates[key] = true;
-        switch(key) {
-            case 'w':
-                pacman.move(0.0f, 1.5f);
-                pacman.rotate(90);
-                break;
-            case 'a':
-                pacman.move(-1.5f, 0.0f);
-                pacman.rotate(180);
-                break;
-            case 's':
-                pacman.move(0.0f, -1.5f);
-                pacman.rotate(270);
-                break;
-            case 'd':
-                pacman.move(1.5f, 0.0f);
-                pacman.rotate(0);
-                break;
-            case UP_ARROW:
-                ghost.move(0.0f, 1.5f);
-                break;
-            case LEFT_ARROW:
-                ghost.move(-1.5f, 0.0f);
-                break;
-            case DOWN_ARROW:
-                ghost.move(0.0f, -1.5f);
-                break;
-            case RIGHT_ARROW:
-                ghost.move(1.5f, 0.0f);
-                break;
-            case ' ':
-                resetGame();
-                break;
-            default:
-                break;
-        }
-    }
-
     // Method to reset the game state
     void Game::resetGame() {
         over = false;
         xIncrementp = 0;
         yIncrementp = 0;
-        xIncrementg = 0;
-        yIncrementg = 0; 
+        xIncrementg = 1.5;
+        yIncrementg = 1.5; 
         rotation = 0;
         points = 0;
-
-        pacman.setInitialPosition(1.5,1.5);
-        ghost.setInitialPosition(1.5, 1.5);
 
         // Reset key states
         for (int i = 0; i < 256; i++){
@@ -302,8 +230,8 @@ public:
     // Method to update the movement of the pacman according to the movement keys pressed
     void Game::keyOperations() {
 
-        float x_p = (1.5 + xIncrementp) * squareSize;
-        float y_p = (1.5 + yIncrementp) * squareSize;
+        x_p = (1.5 + xIncrementp) * squareSize;
+        y_p = (1.5 + yIncrementp) * squareSize;
 
         // Update according to keys pressed
         if (keyStates['a']) {
@@ -314,7 +242,6 @@ public:
                 pacman.rotate(2);
             }
         }
-        
         if (keyStates['d']) {
             x_p += 2;
             int x2Quadrant = (int)((x_p + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
@@ -340,26 +267,20 @@ public:
             }
         }
 
-        
-        if (keyStates['j']) {
-            xIncrementg -= 0.5 ;
+        x_g = (1.5 + xIncrementg) * squareSize;
+        y_g = (1.5 + yIncrementg) * squareSize;
 
-        }
+        if (keyStates[LEFT_ARROW]) { xIncrementg -= 1.25 ; }
         
-        if (keyStates['l']) {
-            xIncrementg += 0.5;
+        if (keyStates[RIGHT_ARROW]) { xIncrementg += 1.25 ; }
+            
+        if (keyStates[UP_ARROW]) { yIncrementg -= 1.25 ; }
         
-        }
-        if (keyStates['i']) {
-            yIncrementg -= 0.5 ;
-                
-        }
-        if (keyStates['k']) {
-            yIncrementg += 0.5; 
-        }
+        if (keyStates[DOWN_ARROW]) { yIncrementg += 1.25 ; }
 
         if (keyStates[' ']) {
             if (!replay && over) {
+                pacman.rotate(0);
                 resetGame();
                 replay = true;
             }
@@ -377,18 +298,17 @@ public:
 
     // Method to check if the game is over
     void Game::gameOver() {
-        int pacmanX = (int)(1.5 + xIncrementp);
-        int pacmanY = (int)(1.5 + yIncrementp);
-        int ghostX = (int)(2.5 + xIncrementg);
-        int ghostY = (int)(2.5 + yIncrementg);
-    
-        if (pacmanX == ghostX && pacmanY == ghostY) {
-                over = true;
-                return; // If Pacman collides with ghost, game over
-            }
-
         if (points == 105) {
-            over = true; // If all food is eaten, game over
+            over = true;
+            return;
+        }
+
+        if (xIncrementp == 0 && yIncrementp == 0 && xIncrementg == 1.5 && yIncrementg == 1.5) { return; }
+
+        // Check if Pacman collides with a ghost
+        if (x_p == x_g && y_p == y_g) {
+            over = true;
+            return;
         }
     }
 
@@ -411,7 +331,7 @@ public:
             glRasterPos2f(170, 350);
             while (*message)
                 glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            message = "To start or restart the game, press the space key.";
+            message = "To start or restart the game, press the letter R.";
             glRasterPos2f(170, 550);
             while (*message)
                 glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
@@ -443,7 +363,7 @@ public:
             glRasterPos2f(385, 400);
             while (*message)
                 glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            message = "To start or restart the game, press the space key.";
+            message = "To start or restart the game, press the R key.";
             glRasterPos2f(170, 550);
             while (*message)
                 glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
@@ -468,18 +388,20 @@ public:
         glRasterPos2f(150, 300);
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-        message = "To control Pacman use WASD";
+        message = "To control Pacman use WASD.";
         glRasterPos2f(200, 400);
         while(*message)
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-        message = "To control the ghost use arrow keys";
-        glRasterPos2f(220, 500);
+        message = "To control the ghost use arrow keys.";
+        glRasterPos2f(200, 450);
         while (*message)
-            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
         message = "To start the game, press the space key twice.";
-        glRasterPos2f(170, 550);
+        glRasterPos2f(200, 500);
         while (*message)
-            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
+        message = "To reset the game, press the R key.";
+        glRasterPos2f(200, 550);
         glFlush();
     }
 

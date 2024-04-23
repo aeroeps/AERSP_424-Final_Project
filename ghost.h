@@ -9,16 +9,16 @@
 
 class Ghost {
 private:
-    std::atomic<float> positionX;
-    std::atomic<float> positionY;
+    std::atomic<float> positionXg;
+    std::atomic<float> positionYg;
     static constexpr float squareSize = 50.0;
 
 public:
-    Ghost() : positionX(0.0), positionY(0.0) {}
+    Ghost() : positionXg(0.0), positionYg(0.0) {}
 
     void draw(float posX, float posY);
 
-    void move(float xIncrement, float yIncrement);
+    void move(float xIncrementg, float yIncrementg);
 
     void setInitialPosition(float x, float y);
 };

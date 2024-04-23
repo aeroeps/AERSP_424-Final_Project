@@ -335,34 +335,34 @@ public:
         float y_g = (1.5 + yIncrementg) * squareSize;
 
         if (keyStates[LEFT_ARROW]) {
-            x_g -= 2;
-            int x1Quadrantg = (int)((x_g - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)y_g / squareSize][x1Quadrantg]) {
+            x_p -= 2;
+            int x1Quadrantg = (int)((x_p - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[(int)y_p / squareSize][x1Quadrantg]) {
                 xIncrementg += 2 ;
                 //ghost.move(-1.5f, 0.0f);
             }
         }
         
         if (keyStates[RIGHT_ARROW]) {
-            x_g += 2;
-            int x2Quadrantg = (int)((x_g + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)y_g / squareSize][x2Quadrantg]) {
+            x_p += 2;
+            int x2Quadrantg = (int)((x_p + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[(int)y_p / squareSize][x2Quadrantg]) {
                 xIncrementg -= 2  ;
                 //ghost.move(1.5f, 0.0f);
             }
         }
         if (keyStates[UP_ARROW]) {
-            y_g -= 2;
-            int y1Quadrantg = (int)((y_g - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[y1Quadrantg][(int)x_g / squareSize]) {
+            y_p -= 2;
+            int y1Quadrantg = (int)((y_p - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[y1Quadrantg][(int)x_p / squareSize]) {
                 yIncrementg -= 2 ;
                 //ghost.move(0.0f, 1.5f);
             }
         }
         if (keyStates[DOWN_ARROW]) {
-            y_g += 2;
-            int y2Quadrantg = (int)((y_g + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[y2Quadrantg][(int)x_g / squareSize]) {
+            y_p += 2;
+            int y2Quadrantg = (int)((y_p + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[y2Quadrantg][(int)x_p / squareSize]) {
                 yIncrementg += 2 ;
                 //ghost.move(0.0f, 1.5f);
             }

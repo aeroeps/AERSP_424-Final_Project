@@ -334,37 +334,37 @@ public:
         float x_g = (1.5 + xIncrementg) * squareSize;
         float y_g = (1.5 + yIncrementg) * squareSize;
 
-        if (keyStates[LEFT_ARROW]) {
-            x_p -= 2;
-            int x1Quadrantg = (int)((x_p - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)y_p / squareSize][x1Quadrantg]) {
-                xIncrementg += 2 ;
-                //ghost.move(-1.5f, 0.0f);
+        if (keyStates['j']) {
+            x_g -= 2;
+            int x1Quadrantg = (int)((x_g - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[(int)y_g / squareSize][x1Quadrantg]) {
+                xIncrementg -= 2 ;
+                
             }
         }
         
-        if (keyStates[RIGHT_ARROW]) {
-            x_p += 2;
-            int x2Quadrantg = (int)((x_p + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)y_p / squareSize][x2Quadrantg]) {
-                xIncrementg -= 2  ;
-                //ghost.move(1.5f, 0.0f);
+        if (keyStates['l']) {
+            x_g += 2;
+            int x2Quadrantg = (int)((x_g + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[(int)y_g / squareSize][x2Quadrantg]) {
+                xIncrementg += 2  ;
+                
             }
         }
-        if (keyStates[UP_ARROW]) {
-            y_p -= 2;
-            int y1Quadrantg = (int)((y_p - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[y1Quadrantg][(int)x_p / squareSize]) {
+        if (keyStates['i']) {
+            y_g -= 2;
+            int y1Quadrantg = (int)((y_g - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[y1Quadrantg][(int)x_g / squareSize]) {
                 yIncrementg -= 2 ;
-                //ghost.move(0.0f, 1.5f);
+                
             }
         }
-        if (keyStates[DOWN_ARROW]) {
-            y_p += 2;
-            int y2Quadrantg = (int)((y_p + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[y2Quadrantg][(int)x_p / squareSize]) {
+        if (keyStates['k']) {
+            y_g += 2;
+            int y2Quadrantg = (int)((y_g + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
+            if (!this->bitmap1[y2Quadrantg][(int)x_g / squareSize]) {
                 yIncrementg += 2 ;
-                //ghost.move(0.0f, 1.5f);
+                
             }
         }
 
@@ -500,7 +500,7 @@ public:
                 this->drawLaberynth();
                 this->drawFood((1.5 + this->xIncrementp) * this->squareSize, (1.5 + this->yIncrementp) * this->squareSize);
                 this->pacman.draw(1.5 + this->xIncrementp, 1.5 + this->yIncrementp, this->rotation);
-                this->ghost.draw(3.5 + this->xIncrementg, 1.5 + this->yIncrementg);
+                this->ghost.draw(175 + this->xIncrementg, 150 + this->yIncrementg);
 
             } else {
                 this->resultsDisplay();

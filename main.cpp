@@ -56,15 +56,14 @@ public:
         positionY.store(oldY + yIncrement);
     }
 
-    // void Pacman::setInitialPosition(float x, float y) {
-    //     positionX = x;
-    //     positionY = y;
-    // }
+    void Pacman::setInitialPosition(float x, float y) {
+        positionX = x;
+        positionY = y;
+    }
 
 // ** GHOST
     
     void Ghost::draw(float posX, float posY) {
-
         int x, y;
         glBegin(GL_LINES);
         glColor3f(1.0, 0.50, 0.75);
@@ -103,10 +102,10 @@ public:
         positionY.store(oldY + yIncrement);
     }
 
-    // void Ghost::setInitialPosition(float x, float y) {
-    //     positionX = x;
-    //     positionY = y;
-    // }
+    void Ghost::setInitialPosition(float x, float y) {
+        positionX = x;
+        positionY = y;
+    }
 
 
 // ** GAME
@@ -130,8 +129,8 @@ public:
                         { 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1 },
                         { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 } };
 
-            // pacman.setInitialPosition(2.5,1.5);
-            // ghost.setInitialPosition(20.0, 20.0);
+            pacman.setInitialPosition(1.5,1.5);
+            ghost.setInitialPosition(1.5, 1.5);
     }
 
     Game::~Game() {
@@ -164,6 +163,12 @@ public:
                     glRectf(left, bottom, right, top);
                 }
             }
+        }
+
+        // Draw the border
+        glColor3f(1.0, 1.0, 1.0); // White color for border
+        for (int i = 0; i < border.size(); i = i + 4) {
+            glRectf(border.at(i) * squareSize, border.at(i + 1) * squareSize, border.at(i + 2) * squareSize, border.at(i + 3) * squareSize);
         }
     }
 
@@ -246,8 +251,8 @@ public:
         yIncrementg = 0; 
         rotation = 0;
 
-        // pacman.setInitialPosition(2.5, 1.5);
-        // ghost.setInitialPosition(20.0, 20.0);
+        pacman.setInitialPosition(1.5,1.5);
+        ghost.setInitialPosition(1.5, 1.5);
 
         // Reset key states
         for (int i = 0; i < 256; i++){
@@ -351,18 +356,19 @@ public:
             y_g -= 2;
             int y1Quadrant = (int)((y_g - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
             if (!this->bitmap1[y1Quadrant][(int)x_g / squareSize]) {
-                yIncrementg -= 2;
-                ghost.move(-2.0f, 0);
+                yIncrementg -= 2 / squareSize;
+                ghost.move(-2.0f / squareSize, 0);
             }
         }
         else if (keyStates[DOWN_ARROW]) {
-            y_p += 100;
+            y_p += 2;
             int y2Quadrant = (int)((y_p + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
             if (!this->bitmap1[y2Quadrant][(int)x_g / squareSize]) {
-                yIncrementg += 100 / squareSize;
-                ghost.move(-100.0f / squareSize, 0);
+                yIncrementg += 2;
+                ghost.move(-2.0f, 0);
             }
         }
+
 
         if (keyStates[' ']) {
             if (!replay && over) {
@@ -377,19 +383,19 @@ public:
 
     // Method to check if the game is over
     void Game::gameOver() {
-        // int pacmanX = (int)(1.5 + xIncrementp);
-        // int pacmanY = (int)(1.5 + yIncrementp);
-        // int ghostX = (int)(2.5 + xIncrementg);
-        // int ghostY = (int)(2.5 + yIncrementg);
+        int pacmanX = (int)(1.5 + xIncrementp);
+        int pacmanY = (int)(1.5 + yIncrementp);
+        int ghostX = (int)(2.5 + xIncrementg);
+        int ghostY = (int)(2.5 + yIncrementg);
     
-        // if (pacmanX == ghostX && pacmanY == ghostY) {
-        //         over = true;
-        //         return; // If Pacman collides with ghost, game over
-        //     }
+        if (pacmanX == ghostX && pacmanY == ghostY) {
+                over = true;
+                return; // If Pacman collides with ghost, game over
+            }
 
-        // if (points == 105) {
-        //     over = true; // If all food is eaten, game over
-        // }
+        if (points == 105) {
+            over = true; // If all food is eaten, game over
+        }
     }
 
     // Method to display the results of the game at the ends
@@ -494,8 +500,8 @@ public:
             if (!this->over) {
                 this->drawLaberynth();
                 this->drawFood((1.5 + this->xIncrementp) * this->squareSize, (1.5 + this->yIncrementp) * this->squareSize);
-                this->pacman.draw(11.5 + this->xIncrementp, 11.5 + this->yIncrementp, this->rotation);
-                // this->ghost.draw(1.5 + this->xIncrementg, 1.5 + this->yIncrementg);
+                this->pacman.draw(1.5 + this->xIncrementp, 1.5 + this->yIncrementp, this->rotation);
+                this->ghost.draw(1.5 + this->xIncrementg, 1.5 + this->yIncrementg);
 
             } else {
                 this->resultsDisplay();

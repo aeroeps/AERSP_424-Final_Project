@@ -423,7 +423,7 @@ public:
                 glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
             message = "CONGRATULATIONS, PACMAN, YOU WON! ";
             glColor3f(1, 1, 1);
-            glRasterPos2f(200, 300);
+            glRasterPos2f(150, 300);
             while (*message)
                 glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
             message = "*************************************";

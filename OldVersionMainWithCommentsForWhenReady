@@ -1,7 +1,7 @@
 #define GL_SILENCE_DEPRECATION
 
 // Include necessary header files for the game, Pacman, and the Ghost
-#include "game.h"
+#include "game.h" 
 #include "pacman.h"
 #include "ghost.h"
 

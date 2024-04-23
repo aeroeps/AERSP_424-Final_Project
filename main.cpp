@@ -460,6 +460,12 @@ void Game::keyOperations() {
             replay = false;
         }
     }
+
+    if (keyStates['r']) 
+    {
+        pacman.rotate(0);
+        resetGame();
+    }
 }
 
 // Method to check if the game is over
@@ -554,42 +560,35 @@ void Game::resultsDisplay() {
 
 // Method to display the starting instructions
 void Game::welcomeScreen() {
-    // Clear the screen with a blue-green color
-    glClearColor(0, 0.2, 0.4, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    const char* message = "*************************************";
-    glRasterPos2f(150, 200);
-    while (*message)
-        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-    
-    message = "PACMAN vs. GHOST";
-    glColor3f(1, 1, 1);
-    glRasterPos2f(225, 250);
-    while (*message)
-        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-    
-    message = "*************************************";
-    glRasterPos2f(150, 300);
-    while (*message)
-        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-    
-    message = "To control Pacman use WASD";
-    glRasterPos2f(150, 400);
-    while(*message)
-        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-    
-    message = "To control the ghost use arrow keys";
-    glRasterPos2f(50, 500);
-    while (*message)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
-    
-    message = "To start the game, press the space key twice.";
-    glRasterPos2f(170, 550);
-    while (*message)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
-    
-    glFlush();
-}
+        glClearColor(0, 0.2, 0.4, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        const char* message = "*************************************";
+        glRasterPos2f(150, 200);
+        while (*message)
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
+        message = "PACMAN vs. GHOST";
+        glColor3f(1, 1, 1);
+        glRasterPos2f(245, 250);
+        while (*message)
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
+        message = "*************************************";
+        glRasterPos2f(150, 300);
+        while (*message)
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
+        message = "To control Pacman use WASD";
+        glRasterPos2f(200, 400);
+        while(*message)
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
+        message = "To control the ghost use arrow keys";
+        glRasterPos2f(220, 500);
+        while (*message)
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
+        message = "To start the game, press the space key twice.";
+        glRasterPos2f(170, 550);
+        while (*message)
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
+        glFlush();
+    }
 
 // Method to display the screen and its elements
 void Game::display() {

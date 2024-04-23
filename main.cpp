@@ -258,6 +258,7 @@ public:
         xIncrementg = 0;
         yIncrementg = 0; 
         rotation = 0;
+        points = 0;
 
         pacman.setInitialPosition(1.5,1.5);
         ghost.setInitialPosition(1.5, 1.5);

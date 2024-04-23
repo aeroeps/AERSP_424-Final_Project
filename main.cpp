@@ -340,41 +340,22 @@ public:
             }
         }
 
-        float x_g = (1.5 + xIncrementg) * squareSize;
-        float y_g = (1.5 + yIncrementg) * squareSize;
-
+        
         if (keyStates['j']) {
-            x_g -= 2;
-            int x1Quadrantg = (int)((x_g - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)y_g / squareSize][x1Quadrantg]) {
-                xIncrementg -= 2 ;
-                
-            }
+            xIncrementg -= 0.5 ;
+
         }
         
         if (keyStates['l']) {
-            x_g += 2;
-            int x2Quadrantg = (int)((x_g + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)y_g / squareSize][x2Quadrantg]) {
-                xIncrementg += 2  ;
-                
-            }
+            xIncrementg += 0.5;
+        
         }
         if (keyStates['i']) {
-            y_g -= 2;
-            int y1Quadrantg = (int)((y_g - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[y1Quadrantg][(int)x_g / squareSize]) {
-                yIncrementg -= 2 ;
+            yIncrementg -= 0.5 ;
                 
-            }
         }
         if (keyStates['k']) {
-            y_g += 2;
-            int y2Quadrantg = (int)((y_g + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[y2Quadrantg][(int)x_g / squareSize]) {
-                yIncrementg += 2 ;
-                
-            }
+            yIncrementg += 0.5; 
         }
 
         if (keyStates[' ']) {

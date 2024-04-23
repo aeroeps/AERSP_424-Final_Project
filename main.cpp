@@ -75,8 +75,8 @@ void Pacman::rotate(int angle) { rotation = angle; }
     
 void Ghost::draw(float posXg, float posYg) {
     
-    posXg += 170;
-    posYg += 150;
+    posXg += 7.5* squareSize;
+    posYg += 7.5* squareSize;
     
     int x, y;
     glBegin(GL_LINES);
@@ -323,16 +323,16 @@ void Game::keyOperations() {
 
     // Update Ghost's movement according to keys pressed
     
-    x_g = (1.5 + xIncrementg) * squareSize;
-    y_g = (1.5 + yIncrementg) * squareSize;
+    x_g = (1.5 + xIncrementg  + (7.5*squareSize));
+    y_g = (1.5 + yIncrementg  + (7.5*squareSize));
 
-    if (keyStates[LEFT_ARROW]) { xIncrementg -= 1.25 ; }
+    if (keyStates[LEFT_ARROW]) { xIncrementg -= 1.5 ; }
     
-    if (keyStates[RIGHT_ARROW]) { xIncrementg += 1.25 ; }
+    if (keyStates[RIGHT_ARROW]) { xIncrementg += 1.5 ; }
         
-    if (keyStates[UP_ARROW]) { yIncrementg -= 1.25 ; }
+    if (keyStates[UP_ARROW]) { yIncrementg -= 1.5 ; }
     
-    if (keyStates[DOWN_ARROW]) { yIncrementg += 1.25 ; }
+    if (keyStates[DOWN_ARROW]) { yIncrementg += 1.5 ; }
 
     if (keyStates[' ']) {
         // Reset the game if replaying and game over
@@ -351,24 +351,43 @@ void Game::keyOperations() {
     {
             pacman.rotate(0);
             resetGame();
+            replay = true;
     }
 }
 
 // Method to check if the game is over
 void Game::gameOver() {
+    cout << x_p << ','<< y_p << ','  << x_g << ',' << y_g<< endl;
+    // x_p = x_p/squareSize;
+    // y_p = y_p/squareSize;
+
+    int numberx = x_g; // The number you want to check
+    int lowerBoundx = x_p - 10; // Lower bound of the range
+    int upperBoundx = x_p + 10;
+
+    int numbery = y_g; // The number you want to check
+    int lowerBoundy = y_p - 10; // Lower bound of the range
+    int upperBoundy = y_p + 10;
+
+    if (numberx >= lowerBoundx && numberx <= upperBoundx) 
+    {
+        if (numbery >= lowerBoundy && numbery <= upperBoundy)
+        {
+            cout << "Number is between the bounds." << endl;
+            over = true;
+            return;
+        }
+    } 
+    else {
+    cout << "Number is outside the bounds." << endl;
+    }
+
     // Check if all food (105 points) is eaten
-    if (points == 105) {
+    if (points == 5) {
         over = true;
         return;
     }
 
-    if (xIncrementp == 0 && yIncrementp == 0 && xIncrementg == 1.5 && yIncrementg == 1.5) { return; }
-
-    // Check if Pacman collides with the Ghost
-    if (x_p == x_g && y_p == y_g) {
-        over = true;
-        return;
-    }
 }
 
 // Method to display the results of the game at the ends
@@ -377,7 +396,7 @@ void Game::resultsDisplay() {
     glClearColor(0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     
-    if (points == 105) {
+    if (points == 5) {
         // Display message for winning the game
         const char* message = "*************************************";
         glRasterPos2f(170, 250);
@@ -395,25 +414,25 @@ void Game::resultsDisplay() {
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
         
-        message = "To start or restart the game, press the letter R.";
+        message = "To start or restart the game, press the letter SPACE twices.";
         glRasterPos2f(170, 550);
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
     } else {
         // Display message for losing the game
         const char* message = "*************************";
-        glRasterPos2f(210, 250);
+        glRasterPos2f(230, 250);
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
         
         message = "SORRY, PACMAN, YOU LOST ... ";
         glColor3f(1, 1, 1);
-        glRasterPos2f(250, 300);
+        glRasterPos2f(210, 300);
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
         
         message = "*************************";
-        glRasterPos2f(210, 350);
+        glRasterPos2f(230, 350);
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
         
@@ -433,7 +452,7 @@ void Game::resultsDisplay() {
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
         
-        message = "To start or restart the game, press the R key.";
+        message = "To start or restart the game, press the SPACE key.";
         glRasterPos2f(170, 550);
         while (*message)
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);

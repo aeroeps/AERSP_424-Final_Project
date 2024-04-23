@@ -16,6 +16,7 @@ private:
     float posYg;
 
 public:
+    // Ghost constructor to set initial position to 0
     Ghost() : positionXg(0.0), positionYg(0.0) {}
 
     void draw(float posX, float posY);

@@ -1,596 +1,1360 @@
-#define GL_SILENCE_DEPRECATION
-#include "game.h"
-#include "pacman.h"
-#include "ghost.h"
+// -*- C++ -*-
+//===----------------------------------------------------------------------===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
 
-#define LEFT_ARROW 37
-#define UP_ARROW 38
-#define RIGHT_ARROW 39
-#define DOWN_ARROW 40
-#include <OpenGL/gl.h>
-#include <GLUT/glut.h>
-#include <iostream>
-#include <vector>
-#include <deque>
-#include <thread>
-#include <atomic>
-#include <string>
-#include <memory>
+#ifndef _LIBCPP___BIT_REFERENCE
+#define _LIBCPP___BIT_REFERENCE
+
+#include <__algorithm/copy_n.h>
+#include <__algorithm/fill_n.h>
+#include <__algorithm/min.h>
+#include <__bit/countr.h>
+#include <__bit/popcount.h>
+#include <__config>
+#include <__iterator/iterator_traits.h>
+#include <__memory/construct_at.h>
+#include <__memory/pointer_traits.h>
+#include <cstring>
 #include <type_traits>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#  pragma GCC system_header
+#endif
 
-using namespace std;
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
 
-class Drawable {
-public:
-    virtual ~Drawable() {} // Virtual destructor
-    virtual void draw() const = 0;
+
+_LIBCPP_BEGIN_NAMESPACE_STD
+
+template <class _Cp, bool _IsConst, typename _Cp::__storage_type = 0> class __bit_iterator;
+template <class _Cp> class __bit_const_reference;
+
+template <class _Tp>
+struct __has_storage_type
+{
+    static const bool value = false;
 };
 
+template <class _Cp, bool = __has_storage_type<_Cp>::value>
+class __bit_reference
+{
+    typedef typename _Cp::__storage_type    __storage_type;
+    typedef typename _Cp::__storage_pointer __storage_pointer;
 
-// ** PACMAN
-    void Pacman::draw(float posX, float posY, float rot) {
-        // Drawing logic for Pacman
-        glBegin(GL_LINES);
-        glColor3f(1.0, 1.0, 0.0);
-        int x, y;
-        for (int k = 0; k < 32; k++) {
-            x = (float)k / 2.0 * cos((30 + 90 * rotation) * M_PI / 180.0) + (posX * squareSize);
-            y = (float)k / 2.0 * sin((30 + 90 * rotation) * M_PI / 180.0) + (posY * squareSize);
-            for (int i = 30; i < 330; i++) {
-                glVertex2f(x, y);
-                x = (float)k / 2.0 * cos((i + 90 * rotation) * M_PI / 180.0) + (posX * squareSize);
-                y = (float)k / 2.0 * sin((i + 90 * rotation) * M_PI / 180.0) + (posY * squareSize);
-                glVertex2f(x, y);
-            }
-        }
-        glEnd();    
+    __storage_pointer __seg_;
+    __storage_type    __mask_;
+
+    friend typename _Cp::__self;
+
+    friend class __bit_const_reference<_Cp>;
+    friend class __bit_iterator<_Cp, false>;
+public:
+    using __container = typename _Cp::__self;
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+    __bit_reference(const __bit_reference&) = default;
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 operator bool() const _NOEXCEPT
+        {return static_cast<bool>(*__seg_ & __mask_);}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 bool operator ~() const _NOEXCEPT
+        {return !static_cast<bool>(*this);}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+    __bit_reference& operator=(bool __x) _NOEXCEPT
+    {
+        if (__x)
+            *__seg_ |= __mask_;
+        else
+            *__seg_ &= ~__mask_;
+        return *this;
     }
 
-    void Pacman::rotate(int angle) { rotation = angle; }
-
-    void Pacman::move(float xIncrement, float yIncrement) {
-        float oldX = positionX.load();
-        float oldY = positionY.load();
-        positionX.store(oldX + xIncrement);
-        positionY.store(oldY + yIncrement);
+#if _LIBCPP_STD_VER > 20
+    _LIBCPP_HIDE_FROM_ABI constexpr const __bit_reference& operator=(bool __x) const noexcept {
+        if (__x)
+            *__seg_ |= __mask_;
+        else
+            *__seg_ &= ~__mask_;
+        return *this;
     }
+#endif
 
-    void Pacman::setInitialPosition(float x, float y) {
-        positionX = x;
-        positionY = y;
-    }
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+    __bit_reference& operator=(const __bit_reference& __x) _NOEXCEPT
+        {return operator=(static_cast<bool>(__x));}
 
-// ** GHOST
-    
-    void Ghost::draw(float posX, float posY) {
-        int x, y;
-        glBegin(GL_LINES);
-        glColor3f(1.0, 0.50, 0.75);
-        
-        // Draw the head
-        for (int k = 0; k < 32; k++) {
-            x = (float)k / 2.0 * cos(360 * M_PI / 180.0) + posX;
-            y = (float)k / 2.0 * sin(360 * M_PI / 180.0) + posY;
-            for (int i = 180; i <= 360; i++) {
-                glVertex2f(x, y);
-                x = (float)k / 2.0 * cos(i * M_PI / 180.0) + posX;
-                y = (float)k / 2.0 * sin(i * M_PI / 180.0) + posY;
-                glVertex2f(x, y);
-            }
-        }
-        glEnd();
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 void flip() _NOEXCEPT {*__seg_ ^= __mask_;}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator<_Cp, false> operator&() const _NOEXCEPT
+        {return __bit_iterator<_Cp, false>(__seg_, static_cast<unsigned>(std::__libcpp_ctz(__mask_)));}
+private:
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+    explicit __bit_reference(__storage_pointer __s, __storage_type __m) _NOEXCEPT
+        : __seg_(__s), __mask_(__m) {}
+};
 
-        // Draw body
-        glRectf(posX - 17, posY, posX + 15, posY + 15);
-        
-        // Draw eyes and legs
-        glBegin(GL_POINTS);
-        glColor3f(0, 0.2, 0.4);
-        glVertex2f(posX - 11, posY + 14); // Legs
-        glVertex2f(posX - 1, posY + 14);  // Legs
-        glVertex2f(posX + 8, posY + 14);  // Legs
-        glVertex2f(posX + 4, posY - 3);   // Eyes
-        glVertex2f(posX - 7, posY - 3);   // Eyes
-        glEnd();
-    }
+template <class _Cp>
+class __bit_reference<_Cp, false>
+{
+};
 
-    void Ghost::move(float xIncrement, float yIncrement) {
-        float oldX = positionX.load();
-        float oldY = positionY.load();
-        positionX.store(oldX + xIncrement);
-        positionY.store(oldY + yIncrement);
-    }
-
-    void Ghost::setInitialPosition(float x, float y) {
-        positionX = x;
-        positionY = y;
-    }
-
-
-// ** GAME
-    Game::Game(Pacman& p, Ghost& g) : pacman(p), ghost(g), replay(false), over(true), squareSize(50.0), xIncrementp(0), yIncrementp(0), xIncrementg(0), yIncrementg(0), rotation(0), points(0) {
-        
-            keyStates = new bool[256];
-
-            bitmap1 = {  { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 },
-                        { 1,0,0,0,0,0,1,1,1,0,0,0,0,0,1 },
-                        { 1,0,1,0,1,0,0,1,0,0,1,0,1,0,1 },
-                        { 1,0,1,0,1,1,0,1,0,1,1,0,1,0,1 },
-                        { 1,0,1,0,0,1,0,1,0,1,0,0,1,0,1 },
-                        { 1,0,1,1,0,0,0,0,0,0,0,1,1,0,1 },
-                        { 1,0,0,0,0,1,1,0,1,1,0,0,0,0,1 },
-                        { 1,0,1,1,0,1,0,0,0,1,0,1,1,0,1 },
-                        { 1,0,1,0,0,1,1,1,1,1,0,0,1,0,1 },
-                        { 1,0,0,0,1,1,1,0,1,1,1,0,0,0,1 },
-                        { 1,0,1,0,1,0,0,0,0,0,1,0,1,0,1 },
-                        { 1,0,1,0,0,0,1,0,1,0,0,0,1,0,1 },
-                        { 1,0,1,1,0,1,1,0,1,1,0,1,1,0,1 },
-                        { 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1 },
-                        { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 } };
-
-            pacman.setInitialPosition(1.5,1.5);
-            ghost.setInitialPosition(1.5, 1.5);
-    }
-
-    Game::~Game() {
-        for (auto drawable : drawables) {
-            delete drawable;
-        }
-    }
-    
-    void Game::init() {
-        // Clear screen
-        glClearColor(0.0, 0.0, 0.0, 0.0);
-        glShadeModel(GL_FLAT);
-
-        // Reset all keys
-        for (int i = 0; i < 256; i++) { keyStates[i] = false; }    
-    }
-
-    void Game::drawLaberynth() {
-        for (int y = 0; y < bitmap1.size(); ++y) {
-            for (int x = 0; x < bitmap1[y].size(); ++x) {
-                if (bitmap1[y][x] == 1) {
-                    // Calculate the coordinates of the rectangle to fill
-                    float left = x * squareSize;
-                    float bottom = y * squareSize;
-                    float right = (x + 1) * squareSize;
-                    float top = (y + 1) * squareSize;
-
-                    // Draw a filled rectangle for the obstacle
-                    glColor3f(0.0, 0.0, 0.0); // Red color for obstacles
-                    glRectf(left, bottom, right, top);
-                }
-            }
-        }
-
-        // Draw the border
-        glColor3f(1.0, 1.0, 1.0); // White color for border
-        for (int i = 0; i < border.size(); i = i + 4) {
-            glRectf(border.at(i) * squareSize, border.at(i + 1) * squareSize, border.at(i + 2) * squareSize, border.at(i + 3) * squareSize);
-        }
-    }
-
-    // Method to check if the food has been eaten
-    bool Game::foodEaten(int x, int y, float pacmanX, float pacmanY) {
-        float radius = 16.0 * cos(359 * M_PI / 180.0);
-        return (x >= pacmanX - radius && x <= pacmanX + radius) &&
-            (y >= pacmanY - radius && y <= pacmanY + radius);
-    }
-
-    //Method to draw all the food left and delete the eaten one
-    void Game::drawFood(float pacmanX, float pacmanY) {
-        vector<float> temp;
-        for (size_t i = 0; i < foodPositions.size(); i += 2) {
-            if (!foodEaten(foodPositions[i] * squareSize, foodPositions[i + 1] * squareSize, pacmanX, pacmanY)) {
-                temp.push_back(foodPositions[i]);
-                temp.push_back(foodPositions[i + 1]);
-            }
-            else {
-                points++;
-            }
-        }
-        foodPositions = std::move(temp);
-
-        glPointSize(5.0);
-        glBegin(GL_POINTS);
-        glColor3f(1.0, 1.0, 1.0);
-        for (size_t j = 0; j < foodPositions.size(); j += 2) {
-            glVertex2f(foodPositions[j] * squareSize, foodPositions[j + 1] * squareSize);
-        }
-        glEnd();
-    }
-
-    // Method to set the pressed key
-    void Game::keyPressed(unsigned char key, int x, int y) {
-        // keyStates[key] = true;
-        switch(key) {
-            case 'w':
-                pacman.move(0.0f, 1.5f);
-                pacman.rotate(90);
-                break;
-            case 'a':
-                pacman.move(-1.5f, 0.0f);
-                pacman.rotate(180);
-                break;
-            case 's':
-                pacman.move(0.0f, -1.5f);
-                pacman.rotate(270);
-                break;
-            case 'd':
-                pacman.move(1.5f, 0.0f);
-                pacman.rotate(0);
-                break;
-            case UP_ARROW:
-                ghost.move(0.0f, 1.5f);
-                break;
-            case LEFT_ARROW:
-                ghost.move(-1.5f, 0.0f);
-                break;
-            case DOWN_ARROW:
-                ghost.move(0.0f, -1.5f);
-                break;
-            case RIGHT_ARROW:
-                ghost.move(1.5f, 0.0f);
-                break;
-            case ' ':
-                resetGame();
-                break;
-            default:
-                break;
-        }
-    }
-
-    // Method to reset the game state
-    void Game::resetGame() {
-        over = false;
-        xIncrementp = 0;
-        yIncrementp = 0;
-        xIncrementg = 0;
-        yIncrementg = 0; 
-        rotation = 0;
-
-        pacman.setInitialPosition(1.5,1.5);
-        ghost.setInitialPosition(1.5, 1.5);
-
-        // Reset key states
-        for (int i = 0; i < 256; i++){
-            keyStates[i] = false;
-        }
-        
-        // Reset food positions
-        foodPositions = { 
-            1.5, 1.5, 1.5, 2.5, 1.5, 3.5, 1.5, 4.5, 
-            1.5, 5.5, 1.5, 6.5, 1.5, 7.5, 1.5, 8.5, 
-            1.5, 9.5, 1.5, 10.5, 1.5, 11.5, 1.5, 12.5, 
-            1.5, 13.5, 2.5, 1.5, 2.5, 6.5, 2.5, 9.5, 
-            2.5, 13.5, 3.5, 1.5, 3.5, 2.5, 3.5, 3.5, 
-            3.5, 4.5, 3.5, 6.5, 3.5, 8.5, 3.5, 9.5, 
-            3.5, 10.5, 3.5, 11.5, 3.5, 13.5, 4.5, 1.5, 
-            4.5, 4.5, 4.5, 5.5, 4.5, 6.5, 4.5, 7.5, 
-            4.5, 8.5, 4.5, 11.5, 4.5, 12.5, 4.5, 13.5, 
-            5.5, 1.5, 5.5, 2.5, 5.5, 5.5, 5.5, 10.5, 
-            5.5, 13.5, 6.5, 2.5, 6.5, 3.5, 6.5, 4.5, 
-            6.5, 5.5, 6.5, 7.5, 6.5, 10.5, 6.5, 13.5, 
-            7.5, 5.5, 7.5, 6.5, 7.5, 7.5, 7.5, 9.5, 
-            7.5, 10.5, 7.5, 11.5, 7.5, 12.5, 7.5, 13.5, 
-            8.5, 2.5, 8.5, 3.5, 8.5, 4.5, 8.5, 5.5, 
-            8.5, 7.5, 8.5, 10.5, 8.5, 13.5, 9.5, 1.5, 
-            9.5, 2.5, 9.5, 5.5, 9.5, 10.5, 9.5, 11.5, 
-            9.5, 13.5, 10.5, 1.5, 10.5, 4.5, 10.5, 5.5, 
-            10.5, 6.5, 10.5, 7.5, 10.5, 8.5, 10.5, 11.5, 
-            10.5, 12.5, 10.5, 13.5, 11.5, 1.5, 11.5, 2.5, 
-            11.5, 3.5, 11.5, 4.5, 11.5, 6.5, 11.5, 8.5, 
-            11.5, 9.5, 11.5, 10.5, 11.5, 11.5, 11.5, 13.5, 
-            12.5, 1.5, 12.5, 6.5, 12.5, 9.5, 12.5, 13.5, 
-            13.5, 1.5, 13.5, 2.5, 13.5, 3.5, 13.5, 4.5, 
-            13.5, 5.5, 13.5, 6.5, 13.5, 7.5, 13.5, 8.5, 
-            13.5, 9.5, 13.5, 10.5, 13.5, 11.5, 13.5, 12.5, 13.5, 13.5 
-        };
-    }
-    
-    // Method to update the movement of the pacman according to the movement keys pressed
-    void Game::keyOperations() {
-
-        float x_p = (1.5 + xIncrementp) * squareSize;
-        float y_p = (1.5 + yIncrementp) * squareSize;
-
-        // Update according to keys pressed
-        if (keyStates['a']) {
-            x_p -= 2;
-            int x1Quadrant = (int)((x_p - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)y_p / squareSize][x1Quadrant]) {
-                xIncrementp -= 2 / squareSize;
-                pacman.move(-2.0f / squareSize, 0);
-                pacman.rotate(2);
-            }
-        }
-        
-        if (keyStates['d']) {
-            x_p += 2;
-            int x2Quadrant = (int)((x_p + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)y_p / squareSize][x2Quadrant]) {
-                xIncrementp += 2 / squareSize;
-                pacman.rotate(0);
-            }
-        }
-        if (keyStates['w']) {
-            y_p -= 2;
-            int y1Quadrant = (int)((y_p - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[y1Quadrant][(int)x_p / squareSize]) {
-                yIncrementp -= 2 / squareSize;
-                pacman.rotate(3);
-            }
-        }
-        if (keyStates['s']) {
-            y_p += 2;
-            int y2Quadrant = (int)((y_p + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[y2Quadrant][(int)x_p / squareSize]) {
-                yIncrementp += 2 / squareSize;
-                pacman.rotate(1);
-            }
-        }
-
-        float x_g = (1.5 + xIncrementg) * squareSize;
-        float y_g = (1.5 + yIncrementg) * squareSize;
-
-        if (keyStates[LEFT_ARROW]) {
-            x_g -= 2;
-            int x1Quadrant = (int)((x_g - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)y_g / squareSize][x1Quadrant]) {
-                xIncrementg -= 2 / squareSize;
-                ghost.move(-2.0f / squareSize, 0);
-            }
-        }
-        
-        else if (keyStates[RIGHT_ARROW]) {
-            x_g += 2;
-            int x2Quadrant = (int)((x_g + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[(int)y_g / squareSize][x2Quadrant]) {
-                xIncrementg += 2 / squareSize;
-                ghost.move(-2.0f / squareSize, 0);
-            }
-        }
-        else if (keyStates[UP_ARROW]) {
-            y_g -= 2;
-            int y1Quadrant = (int)((y_g - 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[y1Quadrant][(int)x_g / squareSize]) {
-                yIncrementg -= 2 / squareSize;
-                ghost.move(-2.0f / squareSize, 0);
-            }
-        }
-        else if (keyStates[DOWN_ARROW]) {
-            y_p += 2;
-            int y2Quadrant = (int)((y_p + 16.0 * cos(360 * M_PI / 180.0)) / squareSize);
-            if (!this->bitmap1[y2Quadrant][(int)x_g / squareSize]) {
-                yIncrementg += 2;
-                ghost.move(-2.0f, 0);
-            }
-        }
-
-
-        if (keyStates[' ']) {
-            if (!replay && over) {
-                resetGame();
-                replay = true;
-            }
-            else if (replay && over) {
-                replay = false;
-            }
-        }
-    }
-
-    // Method to check if the game is over
-    void Game::gameOver() {
-        int pacmanX = (int)(1.5 + xIncrementp);
-        int pacmanY = (int)(1.5 + yIncrementp);
-        int ghostX = (int)(2.5 + xIncrementg);
-        int ghostY = (int)(2.5 + yIncrementg);
-    
-        if (pacmanX == ghostX && pacmanY == ghostY) {
-                over = true;
-                return; // If Pacman collides with ghost, game over
-            }
-
-        if (points == 105) {
-            over = true; // If all food is eaten, game over
-        }
-    }
-
-    // Method to display the results of the game at the ends
-    void Game::resultsDisplay() {
-        glClearColor(0, 0, 0, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-        if (points == 105) {
-            //Won
-            const char* message = "*************************************";
-            glRasterPos2f(170, 250);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            message = "CONGRATULATIONS, PACMAN, YOU WON! ";
-            glColor3f(1, 1, 1);
-            glRasterPos2f(200, 300);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            message = "*************************************";
-            glRasterPos2f(170, 350);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            message = "To start or restart the game, press the space key.";
-            glRasterPos2f(170, 550);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
-        } else {
-            //Lost
-            const char* message = "*************************";
-            glRasterPos2f(210, 250);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            message = "SORRY, PACMAN, YOU LOST ... ";
-            glColor3f(1, 1, 1);
-            glRasterPos2f(250, 300);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            message = "*************************";
-            glRasterPos2f(210, 350);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            message = "You got: ";
-            glRasterPos2f(260, 400);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            string result = to_string(points);
-            message = (char*)result.c_str();
-            glRasterPos2f(350, 400);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            message = " points!";
-            glRasterPos2f(385, 400);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-            message = "To start or restart the game, press the space key.";
-            glRasterPos2f(170, 550);
-            while (*message)
-                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
-        }
-        glFlush();
-    }
-
-    // Method to display the starting instructions
-    void Game::welcomeScreen() {
-        glClearColor(0, 0.2, 0.4, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-        const char* message = "*************************************";
-        glRasterPos2f(150, 200);
-        while (*message)
-            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-        message = "PACMAN vs. GHOST";
-        glColor3f(1, 1, 1);
-        glRasterPos2f(225, 250);
-        while (*message)
-            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-        message = "*************************************";
-        glRasterPos2f(150, 300);
-        while (*message)
-            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-        message = "To control Pacman use WASD";
-        glRasterPos2f(150, 400);
-        while(*message)
-            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *message++);
-        message = "To control the ghost use arrow keys";
-        glRasterPos2f(50, 500);
-        while (*message)
-            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
-        message = "To start the game, press the space key twice.";
-        glRasterPos2f(170, 550);
-        while (*message)
-            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *message++);
-        glFlush();
-    }
-
-    // Method to display the screen and its elements
-    void Game::display() {
-        if (this->points ==1) { this->over = false; }
-
-        this->keyOperations();
-        glClear(GL_COLOR_BUFFER_BIT);
-        this->gameOver();
-        if (this->replay) {
-            if (!this->over) {
-                this->drawLaberynth();
-                this->drawFood((1.5 + this->xIncrementp) * this->squareSize, (1.5 + this->yIncrementp) * this->squareSize);
-                this->pacman.draw(1.5 + this->xIncrementp, 1.5 + this->yIncrementp, this->rotation);
-                this->ghost.draw(1.5 + this->xIncrementg, 1.5 + this->yIncrementg);
-
-            } else {
-                this->resultsDisplay();
-            }
-        } else {
-            this->welcomeScreen();
-        }
-        glutSwapBuffers();
-    }
-
-    // Method to reshape the game if the screen size changes
-    void Game::reshape(int w, int h) {
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glViewport(0, 0, (GLsizei)w, (GLsizei)h);
-        glOrtho(0, 750, 750, 0, -1.0, 1.0);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-    }
-
-// Declare the game object globally
-std::unique_ptr<Pacman> pacmanPtr(new Pacman);
-std::unique_ptr<Ghost> ghostPtr(new Ghost);
-
-float squareSize = 50.0;
-        
-Game game(*pacmanPtr, *ghostPtr);
-
-    // Define static functions
-    void displayCallback() { game.display(); }
-    void reshapeCallback(int w, int h) { game.reshape(w, h); }
-    void keyPressedCallback(unsigned char key, int x, int y){ game.keyStates[key] = true; }
-    void keyUpCallback(unsigned char key, int x, int y){ game.keyStates[key] = false; }
-    void specialKeyPressedCallback(int key, int x, int y) {
-        switch (key) {
-            case GLUT_KEY_UP:
-                game.keyStates[UP_ARROW] = true;
-                break;
-            case GLUT_KEY_DOWN:
-                game.keyStates[DOWN_ARROW] = true;
-                break;
-            case GLUT_KEY_LEFT:
-                game.keyStates[LEFT_ARROW] = true;
-                break;
-            case GLUT_KEY_RIGHT:
-                game.keyStates[RIGHT_ARROW] = true;
-                break;
-        }
-    }
-    void specialKeyUpCallback(int key, int x, int y) {
-        switch (key) {
-            case GLUT_KEY_UP:
-                game.keyStates[UP_ARROW] = false;
-                break;
-            case GLUT_KEY_DOWN:
-                game.keyStates[DOWN_ARROW] = false;
-                break;
-            case GLUT_KEY_LEFT:
-                game.keyStates[LEFT_ARROW] = false;
-                break;
-            case GLUT_KEY_RIGHT:
-                game.keyStates[RIGHT_ARROW] = false;
-                break;
-        }
-    }
-
-
-int main(int argc, char** argv) {
-
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-    glutInitWindowSize(750, 750);
-    glutInitWindowPosition(500, 50);
-    glutCreateWindow("Pacman vs. Ghost");
-    
-
-    // Set GLUT callbacks
-    glutKeyboardFunc(keyPressedCallback);
-    glutKeyboardUpFunc(keyUpCallback);
-    glutDisplayFunc(displayCallback);
-    glutReshapeFunc(reshapeCallback);
-    glutIdleFunc(displayCallback);
-
-    glutSpecialFunc(specialKeyPressedCallback);
-    glutSpecialUpFunc(specialKeyUpCallback);
-
-    game.init();
-
-    glutMainLoop();
-    return 0;
-
+template <class _Cp>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+void
+swap(__bit_reference<_Cp> __x, __bit_reference<_Cp> __y) _NOEXCEPT
+{
+    bool __t = __x;
+    __x = __y;
+    __y = __t;
 }
+
+template <class _Cp, class _Dp>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+void
+swap(__bit_reference<_Cp> __x, __bit_reference<_Dp> __y) _NOEXCEPT
+{
+    bool __t = __x;
+    __x = __y;
+    __y = __t;
+}
+
+template <class _Cp>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+void
+swap(__bit_reference<_Cp> __x, bool& __y) _NOEXCEPT
+{
+    bool __t = __x;
+    __x = __y;
+    __y = __t;
+}
+
+template <class _Cp>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+void
+swap(bool& __x, __bit_reference<_Cp> __y) _NOEXCEPT
+{
+    bool __t = __x;
+    __x = __y;
+    __y = __t;
+}
+
+template <class _Cp>
+class __bit_const_reference
+{
+    typedef typename _Cp::__storage_type          __storage_type;
+    typedef typename _Cp::__const_storage_pointer __storage_pointer;
+
+    __storage_pointer        __seg_;
+    __storage_type __mask_;
+
+    friend typename _Cp::__self;
+    friend class __bit_iterator<_Cp, true>;
+public:
+    _LIBCPP_INLINE_VISIBILITY
+    __bit_const_reference(const __bit_const_reference&) = default;
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+    __bit_const_reference(const __bit_reference<_Cp>& __x) _NOEXCEPT
+        : __seg_(__x.__seg_), __mask_(__x.__mask_) {}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR operator bool() const _NOEXCEPT
+        {return static_cast<bool>(*__seg_ & __mask_);}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator<_Cp, true> operator&() const _NOEXCEPT
+        {return __bit_iterator<_Cp, true>(__seg_, static_cast<unsigned>(std::__libcpp_ctz(__mask_)));}
+private:
+    _LIBCPP_INLINE_VISIBILITY
+    _LIBCPP_CONSTEXPR
+    explicit __bit_const_reference(__storage_pointer __s, __storage_type __m) _NOEXCEPT
+        : __seg_(__s), __mask_(__m) {}
+
+    __bit_const_reference& operator=(const __bit_const_reference&) = delete;
+};
+
+// find
+
+template <class _Cp, bool _IsConst>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI __bit_iterator<_Cp, _IsConst>
+__find_bool_true(__bit_iterator<_Cp, _IsConst> __first, typename _Cp::size_type __n)
+{
+    typedef __bit_iterator<_Cp, _IsConst> _It;
+    typedef typename _It::__storage_type __storage_type;
+    const int __bits_per_word = _It::__bits_per_word;
+    // do first partial word
+    if (__first.__ctz_ != 0)
+    {
+        __storage_type __clz_f = static_cast<__storage_type>(__bits_per_word - __first.__ctz_);
+        __storage_type __dn = _VSTD::min(__clz_f, __n);
+        __storage_type __m = (~__storage_type(0) << __first.__ctz_) & (~__storage_type(0) >> (__clz_f - __dn));
+        __storage_type __b = *__first.__seg_ & __m;
+        if (__b)
+            return _It(__first.__seg_, static_cast<unsigned>(_VSTD::__libcpp_ctz(__b)));
+        if (__n == __dn)
+            return __first + __n;
+        __n -= __dn;
+        ++__first.__seg_;
+    }
+    // do middle whole words
+    for (; __n >= __bits_per_word; ++__first.__seg_, __n -= __bits_per_word)
+        if (*__first.__seg_)
+            return _It(__first.__seg_, static_cast<unsigned>(_VSTD::__libcpp_ctz(*__first.__seg_)));
+    // do last partial word
+    if (__n > 0)
+    {
+        __storage_type __m = ~__storage_type(0) >> (__bits_per_word - __n);
+        __storage_type __b = *__first.__seg_ & __m;
+        if (__b)
+            return _It(__first.__seg_, static_cast<unsigned>(_VSTD::__libcpp_ctz(__b)));
+    }
+    return _It(__first.__seg_, static_cast<unsigned>(__n));
+}
+
+template <class _Cp, bool _IsConst>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI __bit_iterator<_Cp, _IsConst>
+__find_bool_false(__bit_iterator<_Cp, _IsConst> __first, typename _Cp::size_type __n)
+{
+    typedef __bit_iterator<_Cp, _IsConst> _It;
+    typedef typename _It::__storage_type __storage_type;
+    const int __bits_per_word = _It::__bits_per_word;
+    // do first partial word
+    if (__first.__ctz_ != 0)
+    {
+        __storage_type __clz_f = static_cast<__storage_type>(__bits_per_word - __first.__ctz_);
+        __storage_type __dn = _VSTD::min(__clz_f, __n);
+        __storage_type __m = (~__storage_type(0) << __first.__ctz_) & (~__storage_type(0) >> (__clz_f - __dn));
+        __storage_type __b = ~*__first.__seg_ & __m;
+        if (__b)
+            return _It(__first.__seg_, static_cast<unsigned>(_VSTD::__libcpp_ctz(__b)));
+        if (__n == __dn)
+            return __first + __n;
+        __n -= __dn;
+        ++__first.__seg_;
+    }
+    // do middle whole words
+    for (; __n >= __bits_per_word; ++__first.__seg_, __n -= __bits_per_word)
+    {
+        __storage_type __b = ~*__first.__seg_;
+        if (__b)
+            return _It(__first.__seg_, static_cast<unsigned>(_VSTD::__libcpp_ctz(__b)));
+    }
+    // do last partial word
+    if (__n > 0)
+    {
+        __storage_type __m = ~__storage_type(0) >> (__bits_per_word - __n);
+        __storage_type __b = ~*__first.__seg_ & __m;
+        if (__b)
+            return _It(__first.__seg_, static_cast<unsigned>(_VSTD::__libcpp_ctz(__b)));
+    }
+    return _It(__first.__seg_, static_cast<unsigned>(__n));
+}
+
+template <class _Cp, bool _IsConst, class _Tp>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+__bit_iterator<_Cp, _IsConst>
+find(__bit_iterator<_Cp, _IsConst> __first, __bit_iterator<_Cp, _IsConst> __last, const _Tp& __value)
+{
+    if (static_cast<bool>(__value))
+        return _VSTD::__find_bool_true(__first, static_cast<typename _Cp::size_type>(__last - __first));
+    return _VSTD::__find_bool_false(__first, static_cast<typename _Cp::size_type>(__last - __first));
+}
+
+// count
+
+template <class _Cp, bool _IsConst>
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX23 typename __bit_iterator<_Cp, _IsConst>::difference_type
+__count_bool_true(__bit_iterator<_Cp, _IsConst> __first, typename _Cp::size_type __n)
+{
+    typedef __bit_iterator<_Cp, _IsConst> _It;
+    typedef typename _It::__storage_type __storage_type;
+    typedef typename _It::difference_type difference_type;
+    const int __bits_per_word = _It::__bits_per_word;
+    difference_type __r = 0;
+    // do first partial word
+    if (__first.__ctz_ != 0)
+    {
+        __storage_type __clz_f = static_cast<__storage_type>(__bits_per_word - __first.__ctz_);
+        __storage_type __dn = _VSTD::min(__clz_f, __n);
+        __storage_type __m = (~__storage_type(0) << __first.__ctz_) & (~__storage_type(0) >> (__clz_f - __dn));
+        __r = _VSTD::__libcpp_popcount(*__first.__seg_ & __m);
+        __n -= __dn;
+        ++__first.__seg_;
+    }
+    // do middle whole words
+    for (; __n >= __bits_per_word; ++__first.__seg_, __n -= __bits_per_word)
+        __r += _VSTD::__libcpp_popcount(*__first.__seg_);
+    // do last partial word
+    if (__n > 0)
+    {
+        __storage_type __m = ~__storage_type(0) >> (__bits_per_word - __n);
+        __r += _VSTD::__libcpp_popcount(*__first.__seg_ & __m);
+    }
+    return __r;
+}
+
+template <class _Cp, bool _IsConst>
+_LIBCPP_HIDE_FROM_ABI typename __bit_iterator<_Cp, _IsConst>::difference_type
+__count_bool_false(__bit_iterator<_Cp, _IsConst> __first, typename _Cp::size_type __n)
+{
+    typedef __bit_iterator<_Cp, _IsConst> _It;
+    typedef typename _It::__storage_type __storage_type;
+    typedef typename _It::difference_type difference_type;
+    const int __bits_per_word = _It::__bits_per_word;
+    difference_type __r = 0;
+    // do first partial word
+    if (__first.__ctz_ != 0)
+    {
+        __storage_type __clz_f = static_cast<__storage_type>(__bits_per_word - __first.__ctz_);
+        __storage_type __dn = _VSTD::min(__clz_f, __n);
+        __storage_type __m = (~__storage_type(0) << __first.__ctz_) & (~__storage_type(0) >> (__clz_f - __dn));
+        __r = _VSTD::__libcpp_popcount(~*__first.__seg_ & __m);
+        __n -= __dn;
+        ++__first.__seg_;
+    }
+    // do middle whole words
+    for (; __n >= __bits_per_word; ++__first.__seg_, __n -= __bits_per_word)
+        __r += _VSTD::__libcpp_popcount(~*__first.__seg_);
+    // do last partial word
+    if (__n > 0)
+    {
+        __storage_type __m = ~__storage_type(0) >> (__bits_per_word - __n);
+        __r += _VSTD::__libcpp_popcount(~*__first.__seg_ & __m);
+    }
+    return __r;
+}
+
+template <class _Cp, bool _IsConst, class _Tp>
+inline _LIBCPP_INLINE_VISIBILITY
+typename __bit_iterator<_Cp, _IsConst>::difference_type
+count(__bit_iterator<_Cp, _IsConst> __first, __bit_iterator<_Cp, _IsConst> __last, const _Tp& __value)
+{
+    if (static_cast<bool>(__value))
+        return _VSTD::__count_bool_true(__first, static_cast<typename _Cp::size_type>(__last - __first));
+    return _VSTD::__count_bool_false(__first, static_cast<typename _Cp::size_type>(__last - __first));
+}
+
+// fill_n
+
+template <class _Cp>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI void
+__fill_n_false(__bit_iterator<_Cp, false> __first, typename _Cp::size_type __n)
+{
+    typedef __bit_iterator<_Cp, false> _It;
+    typedef typename _It::__storage_type __storage_type;
+    const int __bits_per_word = _It::__bits_per_word;
+    // do first partial word
+    if (__first.__ctz_ != 0)
+    {
+        __storage_type __clz_f = static_cast<__storage_type>(__bits_per_word - __first.__ctz_);
+        __storage_type __dn = _VSTD::min(__clz_f, __n);
+        __storage_type __m = (~__storage_type(0) << __first.__ctz_) & (~__storage_type(0) >> (__clz_f - __dn));
+        *__first.__seg_ &= ~__m;
+        __n -= __dn;
+        ++__first.__seg_;
+    }
+    // do middle whole words
+    __storage_type __nw = __n / __bits_per_word;
+    std::fill_n(std::__to_address(__first.__seg_), __nw, 0);
+    __n -= __nw * __bits_per_word;
+    // do last partial word
+    if (__n > 0)
+    {
+        __first.__seg_ += __nw;
+        __storage_type __m = ~__storage_type(0) >> (__bits_per_word - __n);
+        *__first.__seg_ &= ~__m;
+    }
+}
+
+template <class _Cp>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI void
+__fill_n_true(__bit_iterator<_Cp, false> __first, typename _Cp::size_type __n)
+{
+    typedef __bit_iterator<_Cp, false> _It;
+    typedef typename _It::__storage_type __storage_type;
+    const int __bits_per_word = _It::__bits_per_word;
+    // do first partial word
+    if (__first.__ctz_ != 0)
+    {
+        __storage_type __clz_f = static_cast<__storage_type>(__bits_per_word - __first.__ctz_);
+        __storage_type __dn = _VSTD::min(__clz_f, __n);
+        __storage_type __m = (~__storage_type(0) << __first.__ctz_) & (~__storage_type(0) >> (__clz_f - __dn));
+        *__first.__seg_ |= __m;
+        __n -= __dn;
+        ++__first.__seg_;
+    }
+    // do middle whole words
+    __storage_type __nw = __n / __bits_per_word;
+    // __storage_type is always an unsigned type, so -1 sets all bits
+    std::fill_n(std::__to_address(__first.__seg_), __nw, static_cast<__storage_type>(-1));
+    __n -= __nw * __bits_per_word;
+    // do last partial word
+    if (__n > 0)
+    {
+        __first.__seg_ += __nw;
+        __storage_type __m = ~__storage_type(0) >> (__bits_per_word - __n);
+        *__first.__seg_ |= __m;
+    }
+}
+
+template <class _Cp>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+void
+fill_n(__bit_iterator<_Cp, false> __first, typename _Cp::size_type __n, bool __value)
+{
+    if (__n > 0)
+    {
+        if (__value)
+            _VSTD::__fill_n_true(__first, __n);
+        else
+            _VSTD::__fill_n_false(__first, __n);
+    }
+}
+
+// fill
+
+template <class _Cp>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+void
+fill(__bit_iterator<_Cp, false> __first, __bit_iterator<_Cp, false> __last, bool __value)
+{
+    _VSTD::fill_n(__first, static_cast<typename _Cp::size_type>(__last - __first), __value);
+}
+
+// copy
+
+template <class _Cp, bool _IsConst>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI __bit_iterator<_Cp, false>
+__copy_aligned(__bit_iterator<_Cp, _IsConst> __first, __bit_iterator<_Cp, _IsConst> __last,
+                                                     __bit_iterator<_Cp, false> __result)
+{
+    typedef __bit_iterator<_Cp, _IsConst> _In;
+    typedef  typename _In::difference_type difference_type;
+    typedef typename _In::__storage_type __storage_type;
+    const int __bits_per_word = _In::__bits_per_word;
+    difference_type __n = __last - __first;
+    if (__n > 0)
+    {
+        // do first word
+        if (__first.__ctz_ != 0)
+        {
+            unsigned __clz = __bits_per_word - __first.__ctz_;
+            difference_type __dn = _VSTD::min(static_cast<difference_type>(__clz), __n);
+            __n -= __dn;
+            __storage_type __m = (~__storage_type(0) << __first.__ctz_) & (~__storage_type(0) >> (__clz - __dn));
+            __storage_type __b = *__first.__seg_ & __m;
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b;
+            __result.__seg_ += (__dn + __result.__ctz_) / __bits_per_word;
+            __result.__ctz_ = static_cast<unsigned>((__dn + __result.__ctz_)  % __bits_per_word);
+            ++__first.__seg_;
+            // __first.__ctz_ = 0;
+        }
+        // __first.__ctz_ == 0;
+        // do middle words
+        __storage_type __nw = __n / __bits_per_word;
+        std::copy_n(std::__to_address(__first.__seg_), __nw, std::__to_address(__result.__seg_));
+        __n -= __nw * __bits_per_word;
+        __result.__seg_ += __nw;
+        // do last word
+        if (__n > 0)
+        {
+            __first.__seg_ += __nw;
+            __storage_type __m = ~__storage_type(0) >> (__bits_per_word - __n);
+            __storage_type __b = *__first.__seg_ & __m;
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b;
+            __result.__ctz_ = static_cast<unsigned>(__n);
+        }
+    }
+    return __result;
+}
+
+template <class _Cp, bool _IsConst>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI __bit_iterator<_Cp, false>
+__copy_unaligned(__bit_iterator<_Cp, _IsConst> __first, __bit_iterator<_Cp, _IsConst> __last,
+                                                       __bit_iterator<_Cp, false> __result)
+{
+    typedef __bit_iterator<_Cp, _IsConst> _In;
+    typedef  typename _In::difference_type difference_type;
+    typedef typename _In::__storage_type __storage_type;
+    const int __bits_per_word = _In::__bits_per_word;
+    difference_type __n = __last - __first;
+    if (__n > 0)
+    {
+        // do first word
+        if (__first.__ctz_ != 0)
+        {
+            unsigned __clz_f = __bits_per_word - __first.__ctz_;
+            difference_type __dn = _VSTD::min(static_cast<difference_type>(__clz_f), __n);
+            __n -= __dn;
+            __storage_type __m = (~__storage_type(0) << __first.__ctz_) & (~__storage_type(0) >> (__clz_f - __dn));
+            __storage_type __b = *__first.__seg_ & __m;
+            unsigned __clz_r = __bits_per_word - __result.__ctz_;
+            __storage_type __ddn = _VSTD::min<__storage_type>(__dn, __clz_r);
+            __m = (~__storage_type(0) << __result.__ctz_) & (~__storage_type(0) >> (__clz_r - __ddn));
+            *__result.__seg_ &= ~__m;
+            if (__result.__ctz_ > __first.__ctz_)
+                *__result.__seg_ |= __b << (__result.__ctz_ - __first.__ctz_);
+            else
+                *__result.__seg_ |= __b >> (__first.__ctz_ - __result.__ctz_);
+            __result.__seg_ += (__ddn + __result.__ctz_) / __bits_per_word;
+            __result.__ctz_ = static_cast<unsigned>((__ddn + __result.__ctz_)  % __bits_per_word);
+            __dn -= __ddn;
+            if (__dn > 0)
+            {
+                __m = ~__storage_type(0) >> (__bits_per_word - __dn);
+                *__result.__seg_ &= ~__m;
+                *__result.__seg_ |= __b >> (__first.__ctz_ + __ddn);
+                __result.__ctz_ = static_cast<unsigned>(__dn);
+            }
+            ++__first.__seg_;
+            // __first.__ctz_ = 0;
+        }
+        // __first.__ctz_ == 0;
+        // do middle words
+        unsigned __clz_r = __bits_per_word - __result.__ctz_;
+        __storage_type __m = ~__storage_type(0) << __result.__ctz_;
+        for (; __n >= __bits_per_word; __n -= __bits_per_word, ++__first.__seg_)
+        {
+            __storage_type __b = *__first.__seg_;
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b << __result.__ctz_;
+            ++__result.__seg_;
+            *__result.__seg_ &= __m;
+            *__result.__seg_ |= __b >> __clz_r;
+        }
+        // do last word
+        if (__n > 0)
+        {
+            __m = ~__storage_type(0) >> (__bits_per_word - __n);
+            __storage_type __b = *__first.__seg_ & __m;
+            __storage_type __dn = _VSTD::min(__n, static_cast<difference_type>(__clz_r));
+            __m = (~__storage_type(0) << __result.__ctz_) & (~__storage_type(0) >> (__clz_r - __dn));
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b << __result.__ctz_;
+            __result.__seg_ += (__dn + __result.__ctz_) / __bits_per_word;
+            __result.__ctz_ = static_cast<unsigned>((__dn + __result.__ctz_)  % __bits_per_word);
+            __n -= __dn;
+            if (__n > 0)
+            {
+                __m = ~__storage_type(0) >> (__bits_per_word - __n);
+                *__result.__seg_ &= ~__m;
+                *__result.__seg_ |= __b >> __dn;
+                __result.__ctz_ = static_cast<unsigned>(__n);
+            }
+        }
+    }
+    return __result;
+}
+
+template <class _Cp, bool _IsConst>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+__bit_iterator<_Cp, false>
+copy(__bit_iterator<_Cp, _IsConst> __first, __bit_iterator<_Cp, _IsConst> __last, __bit_iterator<_Cp, false> __result)
+{
+    if (__first.__ctz_ == __result.__ctz_)
+        return _VSTD::__copy_aligned(__first, __last, __result);
+    return _VSTD::__copy_unaligned(__first, __last, __result);
+}
+
+// copy_backward
+
+template <class _Cp, bool _IsConst>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI __bit_iterator<_Cp, false>
+__copy_backward_aligned(__bit_iterator<_Cp, _IsConst> __first, __bit_iterator<_Cp, _IsConst> __last,
+                                                     __bit_iterator<_Cp, false> __result)
+{
+    typedef __bit_iterator<_Cp, _IsConst> _In;
+    typedef  typename _In::difference_type difference_type;
+    typedef typename _In::__storage_type __storage_type;
+    const int __bits_per_word = _In::__bits_per_word;
+    difference_type __n = __last - __first;
+    if (__n > 0)
+    {
+        // do first word
+        if (__last.__ctz_ != 0)
+        {
+            difference_type __dn = _VSTD::min(static_cast<difference_type>(__last.__ctz_), __n);
+            __n -= __dn;
+            unsigned __clz = __bits_per_word - __last.__ctz_;
+            __storage_type __m = (~__storage_type(0) << (__last.__ctz_ - __dn)) & (~__storage_type(0) >> __clz);
+            __storage_type __b = *__last.__seg_ & __m;
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b;
+            __result.__ctz_ = static_cast<unsigned>(((-__dn & (__bits_per_word - 1)) +
+                                                       __result.__ctz_)  % __bits_per_word);
+            // __last.__ctz_ = 0
+         }
+        // __last.__ctz_ == 0 || __n == 0
+        // __result.__ctz_ == 0 || __n == 0
+        // do middle words
+        __storage_type __nw = __n / __bits_per_word;
+        __result.__seg_ -= __nw;
+        __last.__seg_ -= __nw;
+        std::copy_n(std::__to_address(__last.__seg_), __nw, std::__to_address(__result.__seg_));
+        __n -= __nw * __bits_per_word;
+        // do last word
+        if (__n > 0)
+        {
+            __storage_type __m = ~__storage_type(0) << (__bits_per_word - __n);
+            __storage_type __b = *--__last.__seg_ & __m;
+            *--__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b;
+            __result.__ctz_ = static_cast<unsigned>(-__n & (__bits_per_word - 1));
+        }
+    }
+    return __result;
+}
+
+template <class _Cp, bool _IsConst>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI __bit_iterator<_Cp, false>
+__copy_backward_unaligned(__bit_iterator<_Cp, _IsConst> __first, __bit_iterator<_Cp, _IsConst> __last,
+                                                       __bit_iterator<_Cp, false> __result)
+{
+    typedef __bit_iterator<_Cp, _IsConst> _In;
+    typedef  typename _In::difference_type difference_type;
+    typedef typename _In::__storage_type __storage_type;
+    const int __bits_per_word = _In::__bits_per_word;
+    difference_type __n = __last - __first;
+    if (__n > 0)
+    {
+        // do first word
+        if (__last.__ctz_ != 0)
+        {
+            difference_type __dn = _VSTD::min(static_cast<difference_type>(__last.__ctz_), __n);
+            __n -= __dn;
+            unsigned __clz_l = __bits_per_word - __last.__ctz_;
+            __storage_type __m = (~__storage_type(0) << (__last.__ctz_ - __dn)) & (~__storage_type(0) >> __clz_l);
+            __storage_type __b = *__last.__seg_ & __m;
+            unsigned __clz_r = __bits_per_word - __result.__ctz_;
+            __storage_type __ddn = _VSTD::min(__dn, static_cast<difference_type>(__result.__ctz_));
+            if (__ddn > 0)
+            {
+                __m = (~__storage_type(0) << (__result.__ctz_ - __ddn)) & (~__storage_type(0) >> __clz_r);
+                *__result.__seg_ &= ~__m;
+                if (__result.__ctz_ > __last.__ctz_)
+                    *__result.__seg_ |= __b << (__result.__ctz_ - __last.__ctz_);
+                else
+                    *__result.__seg_ |= __b >> (__last.__ctz_ - __result.__ctz_);
+                __result.__ctz_ = static_cast<unsigned>(((-__ddn & (__bits_per_word - 1)) +
+                                                         __result.__ctz_)  % __bits_per_word);
+                __dn -= __ddn;
+            }
+            if (__dn > 0)
+            {
+                // __result.__ctz_ == 0
+                --__result.__seg_;
+                __result.__ctz_ = static_cast<unsigned>(-__dn & (__bits_per_word - 1));
+                __m = ~__storage_type(0) << __result.__ctz_;
+                *__result.__seg_ &= ~__m;
+                __last.__ctz_ -= __dn + __ddn;
+                *__result.__seg_ |= __b << (__result.__ctz_ - __last.__ctz_);
+            }
+            // __last.__ctz_ = 0
+         }
+        // __last.__ctz_ == 0 || __n == 0
+        // __result.__ctz_ != 0 || __n == 0
+        // do middle words
+        unsigned __clz_r = __bits_per_word - __result.__ctz_;
+        __storage_type __m = ~__storage_type(0) >> __clz_r;
+        for (; __n >= __bits_per_word; __n -= __bits_per_word)
+        {
+            __storage_type __b = *--__last.__seg_;
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b >> __clz_r;
+            *--__result.__seg_ &= __m;
+            *__result.__seg_ |= __b << __result.__ctz_;
+        }
+        // do last word
+        if (__n > 0)
+        {
+            __m = ~__storage_type(0) << (__bits_per_word - __n);
+            __storage_type __b = *--__last.__seg_ & __m;
+            __clz_r = __bits_per_word - __result.__ctz_;
+            __storage_type __dn = _VSTD::min(__n, static_cast<difference_type>(__result.__ctz_));
+            __m = (~__storage_type(0) << (__result.__ctz_ - __dn)) & (~__storage_type(0) >> __clz_r);
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b >> (__bits_per_word - __result.__ctz_);
+            __result.__ctz_ = static_cast<unsigned>(((-__dn & (__bits_per_word - 1)) +
+                                                     __result.__ctz_)  % __bits_per_word);
+            __n -= __dn;
+            if (__n > 0)
+            {
+                // __result.__ctz_ == 0
+                --__result.__seg_;
+                __result.__ctz_ = static_cast<unsigned>(-__n & (__bits_per_word - 1));
+                __m = ~__storage_type(0) << __result.__ctz_;
+                *__result.__seg_ &= ~__m;
+                *__result.__seg_ |= __b << (__result.__ctz_ - (__bits_per_word - __n - __dn));
+            }
+        }
+    }
+    return __result;
+}
+
+template <class _Cp, bool _IsConst>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+__bit_iterator<_Cp, false>
+copy_backward(__bit_iterator<_Cp, _IsConst> __first, __bit_iterator<_Cp, _IsConst> __last, __bit_iterator<_Cp, false> __result)
+{
+    if (__last.__ctz_ == __result.__ctz_)
+        return _VSTD::__copy_backward_aligned(__first, __last, __result);
+    return _VSTD::__copy_backward_unaligned(__first, __last, __result);
+}
+
+// move
+
+template <class _Cp, bool _IsConst>
+inline _LIBCPP_INLINE_VISIBILITY
+__bit_iterator<_Cp, false>
+move(__bit_iterator<_Cp, _IsConst> __first, __bit_iterator<_Cp, _IsConst> __last, __bit_iterator<_Cp, false> __result)
+{
+    return _VSTD::copy(__first, __last, __result);
+}
+
+// move_backward
+
+template <class _Cp, bool _IsConst>
+inline _LIBCPP_INLINE_VISIBILITY
+__bit_iterator<_Cp, false>
+move_backward(__bit_iterator<_Cp, _IsConst> __first, __bit_iterator<_Cp, _IsConst> __last, __bit_iterator<_Cp, false> __result)
+{
+    return _VSTD::copy_backward(__first, __last, __result);
+}
+
+// swap_ranges
+
+template <class __C1, class __C2>
+_LIBCPP_HIDE_FROM_ABI __bit_iterator<__C2, false>
+__swap_ranges_aligned(__bit_iterator<__C1, false> __first, __bit_iterator<__C1, false> __last,
+                      __bit_iterator<__C2, false> __result)
+{
+    typedef __bit_iterator<__C1, false> _I1;
+    typedef  typename _I1::difference_type difference_type;
+    typedef typename _I1::__storage_type __storage_type;
+    const int __bits_per_word = _I1::__bits_per_word;
+    difference_type __n = __last - __first;
+    if (__n > 0)
+    {
+        // do first word
+        if (__first.__ctz_ != 0)
+        {
+            unsigned __clz = __bits_per_word - __first.__ctz_;
+            difference_type __dn = _VSTD::min(static_cast<difference_type>(__clz), __n);
+            __n -= __dn;
+            __storage_type __m = (~__storage_type(0) << __first.__ctz_) & (~__storage_type(0) >> (__clz - __dn));
+            __storage_type __b1 = *__first.__seg_ & __m;
+            *__first.__seg_ &= ~__m;
+            __storage_type __b2 = *__result.__seg_ & __m;
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b1;
+            *__first.__seg_  |= __b2;
+            __result.__seg_ += (__dn + __result.__ctz_) / __bits_per_word;
+            __result.__ctz_ = static_cast<unsigned>((__dn + __result.__ctz_)  % __bits_per_word);
+            ++__first.__seg_;
+            // __first.__ctz_ = 0;
+        }
+        // __first.__ctz_ == 0;
+        // do middle words
+        for (; __n >= __bits_per_word; __n -= __bits_per_word, ++__first.__seg_, ++__result.__seg_)
+            swap(*__first.__seg_, *__result.__seg_);
+        // do last word
+        if (__n > 0)
+        {
+            __storage_type __m = ~__storage_type(0) >> (__bits_per_word - __n);
+            __storage_type __b1 = *__first.__seg_ & __m;
+            *__first.__seg_ &= ~__m;
+            __storage_type __b2 = *__result.__seg_ & __m;
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b1;
+            *__first.__seg_  |= __b2;
+            __result.__ctz_ = static_cast<unsigned>(__n);
+        }
+    }
+    return __result;
+}
+
+template <class __C1, class __C2>
+_LIBCPP_HIDE_FROM_ABI __bit_iterator<__C2, false>
+__swap_ranges_unaligned(__bit_iterator<__C1, false> __first, __bit_iterator<__C1, false> __last,
+                        __bit_iterator<__C2, false> __result)
+{
+    typedef __bit_iterator<__C1, false> _I1;
+    typedef  typename _I1::difference_type difference_type;
+    typedef typename _I1::__storage_type __storage_type;
+    const int __bits_per_word = _I1::__bits_per_word;
+    difference_type __n = __last - __first;
+    if (__n > 0)
+    {
+        // do first word
+        if (__first.__ctz_ != 0)
+        {
+            unsigned __clz_f = __bits_per_word - __first.__ctz_;
+            difference_type __dn = _VSTD::min(static_cast<difference_type>(__clz_f), __n);
+            __n -= __dn;
+            __storage_type __m = (~__storage_type(0) << __first.__ctz_) & (~__storage_type(0) >> (__clz_f - __dn));
+            __storage_type __b1 = *__first.__seg_ & __m;
+            *__first.__seg_ &= ~__m;
+            unsigned __clz_r = __bits_per_word - __result.__ctz_;
+            __storage_type __ddn = _VSTD::min<__storage_type>(__dn, __clz_r);
+            __m = (~__storage_type(0) << __result.__ctz_) & (~__storage_type(0) >> (__clz_r - __ddn));
+            __storage_type __b2 = *__result.__seg_ & __m;
+            *__result.__seg_ &= ~__m;
+            if (__result.__ctz_ > __first.__ctz_)
+            {
+                unsigned __s = __result.__ctz_ - __first.__ctz_;
+                *__result.__seg_ |= __b1 << __s;
+                *__first.__seg_  |= __b2 >> __s;
+            }
+            else
+            {
+                unsigned __s = __first.__ctz_ - __result.__ctz_;
+                *__result.__seg_ |= __b1 >> __s;
+                *__first.__seg_  |= __b2 << __s;
+            }
+            __result.__seg_ += (__ddn + __result.__ctz_) / __bits_per_word;
+            __result.__ctz_ = static_cast<unsigned>((__ddn + __result.__ctz_)  % __bits_per_word);
+            __dn -= __ddn;
+            if (__dn > 0)
+            {
+                __m = ~__storage_type(0) >> (__bits_per_word - __dn);
+                __b2 = *__result.__seg_ & __m;
+                *__result.__seg_ &= ~__m;
+                unsigned __s = __first.__ctz_ + __ddn;
+                *__result.__seg_ |= __b1 >> __s;
+                *__first.__seg_  |= __b2 << __s;
+                __result.__ctz_ = static_cast<unsigned>(__dn);
+            }
+            ++__first.__seg_;
+            // __first.__ctz_ = 0;
+        }
+        // __first.__ctz_ == 0;
+        // do middle words
+        __storage_type __m = ~__storage_type(0) << __result.__ctz_;
+        unsigned __clz_r = __bits_per_word - __result.__ctz_;
+        for (; __n >= __bits_per_word; __n -= __bits_per_word, ++__first.__seg_)
+        {
+            __storage_type __b1 = *__first.__seg_;
+            __storage_type __b2 = *__result.__seg_ & __m;
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b1 << __result.__ctz_;
+            *__first.__seg_  = __b2 >> __result.__ctz_;
+            ++__result.__seg_;
+            __b2 = *__result.__seg_ & ~__m;
+            *__result.__seg_ &= __m;
+            *__result.__seg_ |= __b1 >> __clz_r;
+            *__first.__seg_  |= __b2 << __clz_r;
+        }
+        // do last word
+        if (__n > 0)
+        {
+            __m = ~__storage_type(0) >> (__bits_per_word - __n);
+            __storage_type __b1 = *__first.__seg_ & __m;
+            *__first.__seg_ &= ~__m;
+            __storage_type __dn = _VSTD::min<__storage_type>(__n, __clz_r);
+            __m = (~__storage_type(0) << __result.__ctz_) & (~__storage_type(0) >> (__clz_r - __dn));
+            __storage_type __b2 = *__result.__seg_ & __m;
+            *__result.__seg_ &= ~__m;
+            *__result.__seg_ |= __b1 << __result.__ctz_;
+            *__first.__seg_  |= __b2 >> __result.__ctz_;
+            __result.__seg_ += (__dn + __result.__ctz_) / __bits_per_word;
+            __result.__ctz_ = static_cast<unsigned>((__dn + __result.__ctz_)  % __bits_per_word);
+            __n -= __dn;
+            if (__n > 0)
+            {
+                __m = ~__storage_type(0) >> (__bits_per_word - __n);
+                __b2 = *__result.__seg_ & __m;
+                *__result.__seg_ &= ~__m;
+                *__result.__seg_ |= __b1 >> __dn;
+                *__first.__seg_  |= __b2 << __dn;
+                __result.__ctz_ = static_cast<unsigned>(__n);
+            }
+        }
+    }
+    return __result;
+}
+
+template <class __C1, class __C2>
+inline _LIBCPP_INLINE_VISIBILITY
+__bit_iterator<__C2, false>
+swap_ranges(__bit_iterator<__C1, false> __first1, __bit_iterator<__C1, false> __last1,
+            __bit_iterator<__C2, false> __first2)
+{
+    if (__first1.__ctz_ == __first2.__ctz_)
+        return _VSTD::__swap_ranges_aligned(__first1, __last1, __first2);
+    return _VSTD::__swap_ranges_unaligned(__first1, __last1, __first2);
+}
+
+// rotate
+
+template <class _Cp>
+struct __bit_array
+{
+    typedef typename _Cp::difference_type difference_type;
+    typedef typename _Cp::__storage_type  __storage_type;
+    typedef typename _Cp::__storage_pointer __storage_pointer;
+    typedef typename _Cp::iterator        iterator;
+    static const unsigned __bits_per_word = _Cp::__bits_per_word;
+    static const unsigned _Np = 4;
+
+    difference_type __size_;
+    __storage_type __word_[_Np];
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 static difference_type capacity()
+        {return static_cast<difference_type>(_Np * __bits_per_word);}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 explicit __bit_array(difference_type __s) : __size_(__s) {
+        if (__libcpp_is_constant_evaluated()) {
+            for (size_t __i = 0; __i != __bit_array<_Cp>::_Np; ++__i)
+                std::__construct_at(__word_ + __i, 0);
+        }
+    }
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 iterator begin()
+    {
+        return iterator(pointer_traits<__storage_pointer>::pointer_to(__word_[0]), 0);
+    }
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 iterator end()
+    {
+        return iterator(pointer_traits<__storage_pointer>::pointer_to(__word_[0]) + __size_ / __bits_per_word,
+                                                  static_cast<unsigned>(__size_ % __bits_per_word));
+    }
+};
+
+template <class _Cp>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI __bit_iterator<_Cp, false>
+rotate(__bit_iterator<_Cp, false> __first, __bit_iterator<_Cp, false> __middle, __bit_iterator<_Cp, false> __last)
+{
+    typedef __bit_iterator<_Cp, false> _I1;
+    typedef  typename _I1::difference_type difference_type;
+    difference_type __d1 = __middle - __first;
+    difference_type __d2 = __last - __middle;
+    _I1 __r = __first + __d2;
+    while (__d1 != 0 && __d2 != 0)
+    {
+        if (__d1 <= __d2)
+        {
+            if (__d1 <= __bit_array<_Cp>::capacity())
+            {
+                __bit_array<_Cp> __b(__d1);
+                _VSTD::copy(__first, __middle, __b.begin());
+                _VSTD::copy(__b.begin(), __b.end(), _VSTD::copy(__middle, __last, __first));
+                break;
+            }
+            else
+            {
+                __bit_iterator<_Cp, false> __mp = _VSTD::swap_ranges(__first, __middle, __middle);
+                __first = __middle;
+                __middle = __mp;
+                __d2 -= __d1;
+            }
+        }
+        else
+        {
+            if (__d2 <= __bit_array<_Cp>::capacity())
+            {
+                __bit_array<_Cp> __b(__d2);
+                _VSTD::copy(__middle, __last, __b.begin());
+                _VSTD::copy_backward(__b.begin(), __b.end(), _VSTD::copy_backward(__first, __middle, __last));
+                break;
+            }
+            else
+            {
+                __bit_iterator<_Cp, false> __mp = __first + __d2;
+                _VSTD::swap_ranges(__first, __mp, __middle);
+                __first = __mp;
+                __d1 -= __d2;
+            }
+        }
+    }
+    return __r;
+}
+
+// equal
+
+template <class _Cp, bool _IC1, bool _IC2>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI bool
+__equal_unaligned(__bit_iterator<_Cp, _IC1> __first1, __bit_iterator<_Cp, _IC1> __last1,
+                  __bit_iterator<_Cp, _IC2> __first2)
+{
+    typedef __bit_iterator<_Cp, _IC1> _It;
+    typedef  typename _It::difference_type difference_type;
+    typedef typename _It::__storage_type __storage_type;
+    const int __bits_per_word = _It::__bits_per_word;
+    difference_type __n = __last1 - __first1;
+    if (__n > 0)
+    {
+        // do first word
+        if (__first1.__ctz_ != 0)
+        {
+            unsigned __clz_f = __bits_per_word - __first1.__ctz_;
+            difference_type __dn = _VSTD::min(static_cast<difference_type>(__clz_f), __n);
+            __n -= __dn;
+            __storage_type __m = (~__storage_type(0) << __first1.__ctz_) & (~__storage_type(0) >> (__clz_f - __dn));
+            __storage_type __b = *__first1.__seg_ & __m;
+            unsigned __clz_r = __bits_per_word - __first2.__ctz_;
+            __storage_type __ddn = _VSTD::min<__storage_type>(__dn, __clz_r);
+            __m = (~__storage_type(0) << __first2.__ctz_) & (~__storage_type(0) >> (__clz_r - __ddn));
+            if (__first2.__ctz_ > __first1.__ctz_)
+            {
+                if ((*__first2.__seg_ & __m) != (__b << (__first2.__ctz_ - __first1.__ctz_)))
+                    return false;
+            }
+            else
+            {
+                if ((*__first2.__seg_ & __m) != (__b >> (__first1.__ctz_ - __first2.__ctz_)))
+                    return false;
+            }
+            __first2.__seg_ += (__ddn + __first2.__ctz_) / __bits_per_word;
+            __first2.__ctz_ = static_cast<unsigned>((__ddn + __first2.__ctz_)  % __bits_per_word);
+            __dn -= __ddn;
+            if (__dn > 0)
+            {
+                __m = ~__storage_type(0) >> (__bits_per_word - __dn);
+                if ((*__first2.__seg_ & __m) != (__b >> (__first1.__ctz_ + __ddn)))
+                    return false;
+                __first2.__ctz_ = static_cast<unsigned>(__dn);
+            }
+            ++__first1.__seg_;
+            // __first1.__ctz_ = 0;
+        }
+        // __first1.__ctz_ == 0;
+        // do middle words
+        unsigned __clz_r = __bits_per_word - __first2.__ctz_;
+        __storage_type __m = ~__storage_type(0) << __first2.__ctz_;
+        for (; __n >= __bits_per_word; __n -= __bits_per_word, ++__first1.__seg_)
+        {
+            __storage_type __b = *__first1.__seg_;
+            if ((*__first2.__seg_ & __m) != (__b << __first2.__ctz_))
+                return false;
+            ++__first2.__seg_;
+            if ((*__first2.__seg_ & ~__m) != (__b >> __clz_r))
+                return false;
+        }
+        // do last word
+        if (__n > 0)
+        {
+            __m = ~__storage_type(0) >> (__bits_per_word - __n);
+            __storage_type __b = *__first1.__seg_ & __m;
+            __storage_type __dn = _VSTD::min(__n, static_cast<difference_type>(__clz_r));
+            __m = (~__storage_type(0) << __first2.__ctz_) & (~__storage_type(0) >> (__clz_r - __dn));
+            if ((*__first2.__seg_ & __m) != (__b << __first2.__ctz_))
+                return false;
+            __first2.__seg_ += (__dn + __first2.__ctz_) / __bits_per_word;
+            __first2.__ctz_ = static_cast<unsigned>((__dn + __first2.__ctz_)  % __bits_per_word);
+            __n -= __dn;
+            if (__n > 0)
+            {
+                __m = ~__storage_type(0) >> (__bits_per_word - __n);
+                if ((*__first2.__seg_ & __m) != (__b >> __dn))
+                    return false;
+            }
+        }
+    }
+    return true;
+}
+
+template <class _Cp, bool _IC1, bool _IC2>
+_LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI bool
+__equal_aligned(__bit_iterator<_Cp, _IC1> __first1, __bit_iterator<_Cp, _IC1> __last1,
+                __bit_iterator<_Cp, _IC2> __first2)
+{
+    typedef __bit_iterator<_Cp, _IC1> _It;
+    typedef  typename _It::difference_type difference_type;
+    typedef typename _It::__storage_type __storage_type;
+    const int __bits_per_word = _It::__bits_per_word;
+    difference_type __n = __last1 - __first1;
+    if (__n > 0)
+    {
+        // do first word
+        if (__first1.__ctz_ != 0)
+        {
+            unsigned __clz = __bits_per_word - __first1.__ctz_;
+            difference_type __dn = _VSTD::min(static_cast<difference_type>(__clz), __n);
+            __n -= __dn;
+            __storage_type __m = (~__storage_type(0) << __first1.__ctz_) & (~__storage_type(0) >> (__clz - __dn));
+            if ((*__first2.__seg_ & __m) != (*__first1.__seg_ & __m))
+                return false;
+            ++__first2.__seg_;
+            ++__first1.__seg_;
+            // __first1.__ctz_ = 0;
+            // __first2.__ctz_ = 0;
+        }
+        // __first1.__ctz_ == 0;
+        // __first2.__ctz_ == 0;
+        // do middle words
+        for (; __n >= __bits_per_word; __n -= __bits_per_word, ++__first1.__seg_, ++__first2.__seg_)
+            if (*__first2.__seg_ != *__first1.__seg_)
+                return false;
+        // do last word
+        if (__n > 0)
+        {
+            __storage_type __m = ~__storage_type(0) >> (__bits_per_word - __n);
+            if ((*__first2.__seg_ & __m) != (*__first1.__seg_ & __m))
+                return false;
+        }
+    }
+    return true;
+}
+
+template <class _Cp, bool _IC1, bool _IC2>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+bool
+equal(__bit_iterator<_Cp, _IC1> __first1, __bit_iterator<_Cp, _IC1> __last1, __bit_iterator<_Cp, _IC2> __first2)
+{
+    if (__first1.__ctz_ == __first2.__ctz_)
+        return _VSTD::__equal_aligned(__first1, __last1, __first2);
+    return _VSTD::__equal_unaligned(__first1, __last1, __first2);
+}
+
+template <class _Cp, bool _IsConst,
+          typename _Cp::__storage_type>
+class __bit_iterator
+{
+public:
+    typedef typename _Cp::difference_type                                                          difference_type;
+    typedef bool                                                                                  value_type;
+    typedef __bit_iterator                                                                        pointer;
+#ifndef _LIBCPP_ABI_BITSET_VECTOR_BOOL_CONST_SUBSCRIPT_RETURN_BOOL
+    typedef __conditional_t<_IsConst, __bit_const_reference<_Cp>, __bit_reference<_Cp> > reference;
+#else
+    using reference = __conditional_t<_IsConst, bool, __bit_reference<_Cp> >;
+#endif
+    typedef random_access_iterator_tag                                                            iterator_category;
+
+private:
+    typedef typename _Cp::__storage_type                                           __storage_type;
+    typedef __conditional_t<_IsConst, typename _Cp::__const_storage_pointer, typename _Cp::__storage_pointer>
+        __storage_pointer;
+    static const unsigned __bits_per_word = _Cp::__bits_per_word;
+
+    __storage_pointer __seg_;
+    unsigned          __ctz_;
+
+public:
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator() _NOEXCEPT
+#if _LIBCPP_STD_VER > 11
+    : __seg_(nullptr), __ctz_(0)
+#endif
+    {}
+
+    // When _IsConst=false, this is the copy constructor.
+    // It is non-trivial. Making it trivial would break ABI.
+    // When _IsConst=true, this is a converting constructor;
+    // the copy and move constructors are implicitly generated
+    // and trivial.
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+    __bit_iterator(const __bit_iterator<_Cp, false>& __it) _NOEXCEPT
+        : __seg_(__it.__seg_), __ctz_(__it.__ctz_) {}
+
+    // When _IsConst=false, we have a user-provided copy constructor,
+    // so we must also provide a copy assignment operator because
+    // the implicit generation of a defaulted one is deprecated.
+    // When _IsConst=true, the assignment operators are
+    // implicitly generated and trivial.
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+    __bit_iterator& operator=(const _If<_IsConst, struct __private_nat, __bit_iterator>& __it) {
+        __seg_ = __it.__seg_;
+        __ctz_ = __it.__ctz_;
+        return *this;
+    }
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 reference operator*() const _NOEXCEPT {
+        return __conditional_t<_IsConst, __bit_const_reference<_Cp>, __bit_reference<_Cp> >(
+            __seg_, __storage_type(1) << __ctz_);
+    }
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator& operator++()
+    {
+        if (__ctz_ != __bits_per_word-1)
+            ++__ctz_;
+        else
+        {
+            __ctz_ = 0;
+            ++__seg_;
+        }
+        return *this;
+    }
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator operator++(int)
+    {
+        __bit_iterator __tmp = *this;
+        ++(*this);
+        return __tmp;
+    }
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator& operator--()
+    {
+        if (__ctz_ != 0)
+            --__ctz_;
+        else
+        {
+            __ctz_ = __bits_per_word - 1;
+            --__seg_;
+        }
+        return *this;
+    }
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator operator--(int)
+    {
+        __bit_iterator __tmp = *this;
+        --(*this);
+        return __tmp;
+    }
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator& operator+=(difference_type __n)
+    {
+        if (__n >= 0)
+            __seg_ += (__n + __ctz_) / __bits_per_word;
+        else
+            __seg_ += static_cast<difference_type>(__n - __bits_per_word + __ctz_ + 1)
+                    / static_cast<difference_type>(__bits_per_word);
+        __n &= (__bits_per_word - 1);
+        __ctz_ = static_cast<unsigned>((__n + __ctz_)  % __bits_per_word);
+        return *this;
+    }
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator& operator-=(difference_type __n)
+    {
+        return *this += -__n;
+    }
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator operator+(difference_type __n) const
+    {
+        __bit_iterator __t(*this);
+        __t += __n;
+        return __t;
+    }
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 __bit_iterator operator-(difference_type __n) const
+    {
+        __bit_iterator __t(*this);
+        __t -= __n;
+        return __t;
+    }
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend __bit_iterator operator+(difference_type __n, const __bit_iterator& __it) {return __it + __n;}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend difference_type operator-(const __bit_iterator& __x, const __bit_iterator& __y)
+        {return (__x.__seg_ - __y.__seg_) * __bits_per_word + __x.__ctz_ - __y.__ctz_;}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 reference operator[](difference_type __n) const {return *(*this + __n);}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 friend bool operator==(const __bit_iterator& __x, const __bit_iterator& __y)
+        {return __x.__seg_ == __y.__seg_ && __x.__ctz_ == __y.__ctz_;}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 friend bool operator!=(const __bit_iterator& __x, const __bit_iterator& __y)
+        {return !(__x == __y);}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 friend bool operator<(const __bit_iterator& __x, const __bit_iterator& __y)
+        {return __x.__seg_ < __y.__seg_ || (__x.__seg_ == __y.__seg_ && __x.__ctz_ < __y.__ctz_);}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 friend bool operator>(const __bit_iterator& __x, const __bit_iterator& __y)
+        {return __y < __x;}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 friend bool operator<=(const __bit_iterator& __x, const __bit_iterator& __y)
+        {return !(__y < __x);}
+
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 friend bool operator>=(const __bit_iterator& __x, const __bit_iterator& __y)
+        {return !(__x < __y);}
+
+private:
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
+    explicit __bit_iterator(__storage_pointer __s, unsigned __ctz) _NOEXCEPT
+        : __seg_(__s), __ctz_(__ctz) {}
+
+    friend typename _Cp::__self;
+
+    friend class __bit_reference<_Cp>;
+    friend class __bit_const_reference<_Cp>;
+    friend class __bit_iterator<_Cp, true>;
+    template <class _Dp> friend struct __bit_array;
+    template <class _Dp>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend void __fill_n_false(__bit_iterator<_Dp, false> __first, typename _Dp::size_type __n);
+
+    template <class _Dp>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend void __fill_n_true(__bit_iterator<_Dp, false> __first, typename _Dp::size_type __n);
+
+    template <class _Dp, bool _IC>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend __bit_iterator<_Dp, false> __copy_aligned(__bit_iterator<_Dp, _IC> __first,
+                                                     __bit_iterator<_Dp, _IC> __last,
+                                                     __bit_iterator<_Dp, false> __result);
+    template <class _Dp, bool _IC>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend __bit_iterator<_Dp, false> __copy_unaligned(__bit_iterator<_Dp, _IC> __first,
+                                                       __bit_iterator<_Dp, _IC> __last,
+                                                       __bit_iterator<_Dp, false> __result);
+    template <class _Dp, bool _IC>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend __bit_iterator<_Dp, false> copy(__bit_iterator<_Dp, _IC> __first,
+                                           __bit_iterator<_Dp, _IC> __last,
+                                           __bit_iterator<_Dp, false> __result);
+    template <class _Dp, bool _IC>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend __bit_iterator<_Dp, false> __copy_backward_aligned(__bit_iterator<_Dp, _IC> __first,
+                                                              __bit_iterator<_Dp, _IC> __last,
+                                                              __bit_iterator<_Dp, false> __result);
+    template <class _Dp, bool _IC>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend __bit_iterator<_Dp, false> __copy_backward_unaligned(__bit_iterator<_Dp, _IC> __first,
+                                                                __bit_iterator<_Dp, _IC> __last,
+                                                                __bit_iterator<_Dp, false> __result);
+    template <class _Dp, bool _IC>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend __bit_iterator<_Dp, false> copy_backward(__bit_iterator<_Dp, _IC> __first,
+                                                    __bit_iterator<_Dp, _IC> __last,
+                                                    __bit_iterator<_Dp, false> __result);
+    template <class __C1, class __C2>friend __bit_iterator<__C2, false> __swap_ranges_aligned(__bit_iterator<__C1, false>,
+                                                                                           __bit_iterator<__C1, false>,
+                                                                                           __bit_iterator<__C2, false>);
+    template <class __C1, class __C2>friend __bit_iterator<__C2, false> __swap_ranges_unaligned(__bit_iterator<__C1, false>,
+                                                                                             __bit_iterator<__C1, false>,
+                                                                                             __bit_iterator<__C2, false>);
+    template <class __C1, class __C2>friend __bit_iterator<__C2, false> swap_ranges(__bit_iterator<__C1, false>,
+                                                                                 __bit_iterator<__C1, false>,
+                                                                                 __bit_iterator<__C2, false>);
+    template <class _Dp>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend __bit_iterator<_Dp, false> rotate(__bit_iterator<_Dp, false>,
+                                             __bit_iterator<_Dp, false>,
+                                             __bit_iterator<_Dp, false>);
+    template <class _Dp, bool _IC1, bool _IC2>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend bool __equal_aligned(__bit_iterator<_Dp, _IC1>,
+                                __bit_iterator<_Dp, _IC1>,
+                                __bit_iterator<_Dp, _IC2>);
+    template <class _Dp, bool _IC1, bool _IC2>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend bool __equal_unaligned(__bit_iterator<_Dp, _IC1>,
+                                  __bit_iterator<_Dp, _IC1>,
+                                  __bit_iterator<_Dp, _IC2>);
+    template <class _Dp, bool _IC1, bool _IC2>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend bool equal(__bit_iterator<_Dp, _IC1>,
+                      __bit_iterator<_Dp, _IC1>,
+                      __bit_iterator<_Dp, _IC2>);
+    template <class _Dp, bool _IC>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend __bit_iterator<_Dp, _IC> __find_bool_true(__bit_iterator<_Dp, _IC>, typename _Dp::size_type);
+    template <class _Dp, bool _IC>
+    _LIBCPP_CONSTEXPR_SINCE_CXX20
+    friend __bit_iterator<_Dp, _IC> __find_bool_false(__bit_iterator<_Dp, _IC>, typename _Dp::size_type);
+    template <class _Dp, bool _IC> friend typename __bit_iterator<_Dp, _IC>::difference_type
+    _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX23
+                   __count_bool_true(__bit_iterator<_Dp, _IC>, typename _Dp::size_type);
+    template <class _Dp, bool _IC> friend typename __bit_iterator<_Dp, _IC>::difference_type
+                   __count_bool_false(__bit_iterator<_Dp, _IC>, typename _Dp::size_type);
+};
+
+_LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
+
+#endif // _LIBCPP___BIT_REFERENCE

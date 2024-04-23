@@ -383,7 +383,7 @@ void Game::gameOver() {
     }
 
     // Check if all food (105 points) is eaten
-    if (points == 5) {
+    if (points == 105) {
         over = true;
         return;
     }
@@ -396,7 +396,7 @@ void Game::resultsDisplay() {
     glClearColor(0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     
-    if (points == 5) {
+    if (points == 105) {
         // Display message for winning the game
         const char* message = "*************************************";
         glRasterPos2f(170, 250);

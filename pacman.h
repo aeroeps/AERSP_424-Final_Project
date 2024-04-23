@@ -15,6 +15,7 @@ private:
     static constexpr float squareSize = 50.0;
 
 public:
+    // Pacman constructor to set initial position and rotation to 0
     Pacman() : positionX(0.0), positionY(0.0), rotation(0) {}
 
     void draw(float posX, float posY, float rot);
